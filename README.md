@@ -1,2 +1,2 @@
-# go-desktop-app-template
+# Go-desktop-app-template
 A Golang desktop application template using Fyne.
