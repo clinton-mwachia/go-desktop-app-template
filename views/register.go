@@ -2,6 +2,7 @@ package views
 
 import (
 	"desktop-app-template/auth"
+	"desktop-app-template/utils"
 	"log"
 
 	"fyne.io/fyne/v2"
@@ -36,10 +37,14 @@ func RegisterView(window fyne.Window, showDashboard func()) *fyne.Container {
 		}
 	})
 
-	return container.NewVBox(
+	form := container.NewVBox(
 		usernameEntry,
 		passwordEntry,
 		roleEntry,
 		registerButton,
 	)
+
+	centeredForm := utils.NewFixedWidthCenter(form, 300)
+
+	return container.NewCenter(centeredForm)
 }
