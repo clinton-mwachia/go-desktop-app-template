@@ -37,11 +37,16 @@ func RegisterView(window fyne.Window, showDashboard func()) *fyne.Container {
 		}
 	})
 
+	loginButton := widget.NewButton("Login", func() {
+		window.SetContent(LoginView(window, showDashboard))
+	})
+
 	form := container.NewVBox(
 		usernameEntry,
 		passwordEntry,
 		roleEntry,
 		registerButton,
+		loginButton,
 	)
 
 	centeredForm := utils.NewFixedWidthCenter(form, 300)
