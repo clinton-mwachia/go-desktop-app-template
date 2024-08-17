@@ -6,7 +6,7 @@ import (
 	"fyne.io/fyne/v2/widget"
 )
 
-func TodosView(window fyne.Window) *fyne.Container {
-	label := widget.NewLabel("Manage Todos")
-	return container.NewVBox(label)
+func TodosView() *fyne.Container {
+	todosContent := widget.NewLabel("Todos Content")
+	return container.NewStack(todosContent)
 }
