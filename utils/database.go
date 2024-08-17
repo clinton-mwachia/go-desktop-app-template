@@ -14,9 +14,14 @@ func ConnectDB(uri string) {
 	clientOptions := options.Client().ApplyURI(uri)
 	client, err := mongo.Connect(context.Background(), clientOptions)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("Failed to connect to MongoDB: %v", err)
 	}
 	Client = client
+
+	err = client.Ping(context.TODO(), nil)
+	if err != nil {
+		log.Fatalf("Failed to ping MongoDB: %v", err)
+	}
 }
 
 func GetCollection(collectionName string) *mongo.Collection {
