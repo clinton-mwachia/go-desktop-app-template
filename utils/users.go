@@ -16,7 +16,7 @@ func AddUser(user models.User, window fyne.Window) {
 	collection := GetCollection("users")
 	_, err := collection.InsertOne(context.TODO(), user)
 	if err != nil {
-		dialog.ShowError(fmt.Errorf("Failed to add user: %v", err), window)
+		dialog.ShowError(fmt.Errorf("failed to add user: %v", err), window)
 	} else {
 		dialog.ShowInformation("Success", "User added successfully!", window)
 	}
@@ -32,7 +32,7 @@ func BulkInsertUsers(users []models.User, window fyne.Window) {
 
 	_, err := collection.InsertMany(context.TODO(), documents)
 	if err != nil {
-		dialog.ShowError(fmt.Errorf("Failed to insert users: %v", err), window)
+		dialog.ShowError(fmt.Errorf("failed to insert users: %v", err), window)
 	} else {
 		dialog.ShowInformation("Success", "Users inserted successfully!", window)
 	}
@@ -45,13 +45,13 @@ func GetAllUsers(window fyne.Window) []models.User {
 
 	cursor, err := collection.Find(context.TODO(), bson.M{})
 	if err != nil {
-		dialog.ShowError(fmt.Errorf("Failed to find users: %v", err), window)
+		dialog.ShowError(fmt.Errorf("failed to find users: %v", err), window)
 		return nil
 	}
 	defer cursor.Close(context.TODO())
 
 	if err = cursor.All(context.TODO(), &users); err != nil {
-		dialog.ShowError(fmt.Errorf("Failed to decode users: %v", err), window)
+		dialog.ShowError(fmt.Errorf("failed to decode users: %v", err), window)
 	}
 
 	return users
@@ -64,7 +64,7 @@ func GetUserByID(id primitive.ObjectID, window fyne.Window) *models.User {
 
 	err := collection.FindOne(context.TODO(), bson.M{"_id": id}).Decode(&user)
 	if err != nil {
-		dialog.ShowError(fmt.Errorf("Failed to find user by ID: %v", err), window)
+		dialog.ShowError(fmt.Errorf("failed to find user by ID: %v", err), window)
 		return nil
 	}
 
@@ -80,7 +80,7 @@ func UpdateUser(user models.User, window fyne.Window) {
 		bson.M{"$set": user},
 	)
 	if err != nil {
-		dialog.ShowError(fmt.Errorf("Failed to update user: %v", err), window)
+		dialog.ShowError(fmt.Errorf("failed to update user: %v", err), window)
 	} else {
 		dialog.ShowInformation("Success", "User updated successfully!", window)
 	}
@@ -91,7 +91,7 @@ func DeleteUser(id primitive.ObjectID, window fyne.Window) {
 	collection := GetCollection("users")
 	_, err := collection.DeleteOne(context.TODO(), bson.M{"_id": id})
 	if err != nil {
-		dialog.ShowError(fmt.Errorf("Failed to delete user: %v", err), window)
+		dialog.ShowError(fmt.Errorf("failed to delete user: %v", err), window)
 	} else {
 		dialog.ShowInformation("Success", "User deleted successfully!", window)
 	}
