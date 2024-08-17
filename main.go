@@ -7,45 +7,46 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
-	"fyne.io/fyne/v2/widget"
 )
 
 func main() {
 	utils.ConnectDB("mongodb://localhost:27017")
 
 	application := app.New()
-	window := application.NewWindow("Todo App")
+	window := application.NewWindow("Go desktop app template")
 
-	var content *fyne.Container
+	// Placeholder for functions that need to reference each other
+	var showDashboard, showUsers, showTodos, showLogin func()
 
-	dashboardView := views.DashboardView(window)
-	usersView := views.UsersView(window)
-	todosView := views.TodosView(window)
+	// Function to show the dashboard view
+	showDashboard = func() {
+		sidebar := views.Sidebar(window, showDashboard, showUsers, showTodos, showLogin)
+		dashboard := views.DashboardView()
+		window.SetContent(container.NewBorder(nil, nil, sidebar, nil, dashboard))
+	}
 
-	content = dashboardView
+	// Function to show the users view
+	showUsers = func() {
+		sidebar := views.Sidebar(window, showDashboard, showUsers, showTodos, showLogin)
+		users := views.UsersView()
+		window.SetContent(container.NewBorder(nil, nil, sidebar, nil, users))
+	}
 
-	sidebar := container.NewVBox(
-		widget.NewButton("Dashboard", func() {
-			content.Objects = []fyne.CanvasObject{dashboardView}
-			content.Refresh()
-		}),
-		widget.NewButton("Users", func() {
-			content.Objects = []fyne.CanvasObject{usersView}
-			content.Refresh()
-		}),
-		widget.NewButton("Todos", func() {
-			content.Objects = []fyne.CanvasObject{todosView}
-			content.Refresh()
-		}),
-	)
+	// Function to show the todos view
+	showTodos = func() {
+		sidebar := views.Sidebar(window, showDashboard, showUsers, showTodos, showLogin)
+		todos := views.TodosView()
+		window.SetContent(container.NewBorder(nil, nil, sidebar, nil, todos))
+	}
 
-	mainContent := container.NewHSplit(sidebar, content)
-	mainContent.Offset = 0.2
+	// Function to show the login view
+	showLogin = func() {
+		window.SetContent(views.LoginView(window, showDashboard))
+	}
 
-	loginView := views.LoginView(window, func() {
-		window.SetContent(mainContent)
-	})
-
-	window.SetContent(loginView)
+	// Initial view when the application starts
+	showLogin()
+	window.Resize(fyne.NewSize(400, 300))
+	window.CenterOnScreen()
 	window.ShowAndRun()
 }
