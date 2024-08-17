@@ -6,7 +6,7 @@ import (
 	"fyne.io/fyne/v2/widget"
 )
 
-func UsersView(window fyne.Window) *fyne.Container {
-	label := widget.NewLabel("Users Management")
-	return container.NewVBox(label)
+func UsersView() *fyne.Container {
+	usersContent := widget.NewLabel("Users Content")
+	return container.NewStack(usersContent)
 }
