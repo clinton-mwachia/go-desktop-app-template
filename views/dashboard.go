@@ -6,7 +6,7 @@ import (
 	"fyne.io/fyne/v2/widget"
 )
 
-func DashboardView(window fyne.Window) *fyne.Container {
-	label := widget.NewLabel("Welcome to the Dashboard")
-	return container.NewVBox(label)
+func DashboardView() *fyne.Container {
+	dashboardContent := widget.NewLabel("Dashboard Content")
+	return container.NewStack(dashboardContent)
 }
