@@ -28,14 +28,14 @@ func main() {
 	// Function to show the users view
 	showUsers = func() {
 		sidebar := views.Sidebar(window, showDashboard, showUsers, showTodos, showLogin)
-		users := views.UsersView()
+		users := views.UsersView(window)
 		window.SetContent(container.NewBorder(nil, nil, sidebar, nil, users))
 	}
 
 	// Function to show the todos view
 	showTodos = func() {
 		sidebar := views.Sidebar(window, showDashboard, showUsers, showTodos, showLogin)
-		todos := views.TodosView()
+		todos := views.TodosView(window, utils.CurrentUserID)
 		window.SetContent(container.NewBorder(nil, nil, sidebar, nil, todos))
 	}
 
