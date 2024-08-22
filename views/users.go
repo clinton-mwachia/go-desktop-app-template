@@ -87,7 +87,7 @@ func UsersView(window fyne.Window) fyne.CanvasObject {
 	// Initial load of users
 	updateUserList()
 
-	return container.NewBorder(addUserButton, nil, nil, nil, container.NewVBox(titleRow, userList))
+	return container.NewBorder(addUserButton, nil, nil, nil, container.NewBorder(titleRow, nil, nil, nil, userList))
 }
 
 // Function to load users from the database

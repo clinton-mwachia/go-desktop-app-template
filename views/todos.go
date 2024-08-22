@@ -79,7 +79,7 @@ func TodosView(window fyne.Window, userID primitive.ObjectID) fyne.CanvasObject 
 		showTodoForm(window, nil, userID, updateTodoList)
 	})
 	// Define the container for the list
-	listContainer := container.NewVBox(titleRow, todoList)
+	listContainer := container.NewBorder(titleRow, nil, nil, nil, todoList)
 
 	// Use a container to make the list responsive
 	listWrapper := container.NewBorder(addTodoButton, nil, nil, nil, listContainer)
