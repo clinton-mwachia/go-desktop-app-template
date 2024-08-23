@@ -150,3 +150,37 @@ func CountTodos(userID primitive.ObjectID, w fyne.Window) int64 {
 	}
 	return count
 }
+
+func SearchTodos(searchText string, userID primitive.ObjectID, window fyne.Window) []models.Todo {
+	collection := GetCollection("todos")
+
+	// Create a case-insensitive regex pattern for the search
+	searchPattern := bson.M{
+		"$regex":   searchText,
+		"$options": "i", // Case-insensitive
+	}
+
+	filter := bson.M{
+		"user_id": userID,
+		"$or": []bson.M{
+			{"title": searchPattern},
+			{"content": searchPattern},
+		},
+	}
+
+	cursor, err := collection.Find(context.TODO(), filter)
+	if err != nil {
+		dialog.ShowError(err, window)
+		return nil
+	}
+	defer cursor.Close(context.TODO())
+
+	var results []models.Todo
+	if err = cursor.All(context.TODO(), &results); err != nil {
+		dialog.ShowError(err, window)
+		return nil
+	}
+
+	return results
+
+}
