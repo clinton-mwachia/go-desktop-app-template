@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	pageSize = 10 // Number of todos per page
+	pageSize = 3 // Number of todos per page
 )
 
 func TodosView(window fyne.Window, userID primitive.ObjectID) fyne.CanvasObject {
@@ -24,7 +24,7 @@ func TodosView(window fyne.Window, userID primitive.ObjectID) fyne.CanvasObject 
 	var currentPage int = 1
 	var totalTodos int64 = 0
 	var pageLabel *widget.Label
-
+	var prevButton, nextButton *widget.Button
 	// Load todos for the specified page
 	loadTodos := func(page int) {
 		todos = utils.GetTodosPaginated(page, pageSize, userID, window)
@@ -32,8 +32,20 @@ func TodosView(window fyne.Window, userID primitive.ObjectID) fyne.CanvasObject 
 
 		todoList.Refresh()
 
+		// Enable or disable pagination buttons based on the current page and total pages
+		totalPages := int(math.Ceil(float64(totalTodos) / float64(pageSize)))
+
 		// Update page label
-		pageLabel.SetText(fmt.Sprintf("Page %d of %d", currentPage, int(math.Ceil(float64(totalTodos)/float64(pageSize)))))
+		pageLabel.SetText(fmt.Sprintf("Page %d of %d", currentPage, totalPages))
+
+		prevButton.Disable()
+		nextButton.Disable()
+		if currentPage > 1 {
+			prevButton.Enable()
+		}
+		if currentPage < totalPages {
+			nextButton.Enable()
+		}
 	}
 
 	updateTodoList := func() {
@@ -98,13 +110,13 @@ func TodosView(window fyne.Window, userID primitive.ObjectID) fyne.CanvasObject 
 
 	// Pagination controls
 	pagination := container.NewHBox()
-	prevButton := widget.NewButton("Previous", func() {
+	prevButton = widget.NewButton("Previous", func() {
 		if currentPage > 1 {
 			currentPage--
 			updateTodoList()
 		}
 	})
-	nextButton := widget.NewButton("Next", func() {
+	nextButton = widget.NewButton("Next", func() {
 		if int(math.Ceil(float64(totalTodos)/float64(pageSize))) > currentPage {
 			currentPage++
 			updateTodoList()
