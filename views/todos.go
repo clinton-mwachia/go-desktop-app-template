@@ -25,10 +25,21 @@ func TodosView(window fyne.Window, userID primitive.ObjectID) fyne.CanvasObject 
 	var totalTodos int64 = 0
 	var pageLabel *widget.Label
 	var prevButton, nextButton *widget.Button
+	var searchResults []models.Todo
+	var searchEntry *widget.Entry
+
 	// Load todos for the specified page
 	loadTodos := func(page int) {
-		todos = utils.GetTodosPaginated(page, pageSize, userID, window)
-		totalTodos = utils.CountTodos(userID, window)
+		// Check if search is active
+		if searchEntry.Text != "" {
+			// Use filtered todos when a search query is active
+			todos = searchResults
+			totalTodos = int64(len(todos))
+		} else {
+			// Use all todos for normal pagination
+			todos = utils.GetTodosPaginated(page, pageSize, userID, window)
+			totalTodos = utils.CountTodos(userID, window)
+		}
 
 		todoList.Refresh()
 
@@ -63,7 +74,9 @@ func TodosView(window fyne.Window, userID primitive.ObjectID) fyne.CanvasObject 
 
 	// Create the todos list
 	todoList = widget.NewList(
-		func() int { return len(todos) },
+		func() int {
+			return len(todos)
+		},
 		func() fyne.CanvasObject {
 			titleLabel := widget.NewLabel("")
 			contentLabel := widget.NewLabel("")
@@ -131,9 +144,32 @@ func TodosView(window fyne.Window, userID primitive.ObjectID) fyne.CanvasObject 
 	pagination.Add(pageLabel)
 	pagination.Add(nextButton)
 
+	// Center the pagination controls
+	pagination = container.NewCenter(pagination)
+
 	addTodoButton := widget.NewButton("Add Todo", func() {
 		showTodoForm(window, nil, userID, updateTodoList)
 	})
+
+	// Search functionality
+	searchEntry = widget.NewEntry()
+	searchEntry.SetPlaceHolder("Search Todos...")
+	searchButton := widget.NewButton("Search Todos", func() {
+		searchText := searchEntry.Text
+		if searchText != "" {
+			searchResults = utils.SearchTodos(searchText, userID, window)
+			currentPage = 1 // Reset to first page of search results
+			updateTodoList()
+		} else {
+			// If search is cleared, reset the pagination and todo list
+			searchResults = nil
+			currentPage = 1
+			updateTodoList()
+		}
+	})
+
+	// Combine the search entry and button
+	searchContainer := container.New(layout.NewGridLayout(2), searchEntry, searchButton)
 
 	// Load the initial set of todos
 	updateTodoList()
@@ -141,8 +177,10 @@ func TodosView(window fyne.Window, userID primitive.ObjectID) fyne.CanvasObject 
 	// Define the container for the list with pagination controls
 	listContainer := container.NewBorder(titleRow, nil, nil, nil, todoList)
 
+	listWrapper := container.NewBorder(addTodoButton, pagination, nil, nil, listContainer)
+
 	// Return the final container with all elements
-	return container.NewBorder(addTodoButton, pagination, nil, nil, listContainer)
+	return container.NewBorder(searchContainer, nil, nil, nil, listWrapper)
 }
 
 // Function to display the todo form for adding or editing a todo
