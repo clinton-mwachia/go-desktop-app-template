@@ -3,13 +3,17 @@ package views
 import (
 	"desktop-app-template/models"
 	"desktop-app-template/utils"
+	"encoding/csv"
 	"fmt"
 	"math"
+	"os"
+	"strconv"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/layout"
+	"fyne.io/fyne/v2/storage"
 	"fyne.io/fyne/v2/widget"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
@@ -162,6 +166,32 @@ func TodosView(window fyne.Window, userID primitive.ObjectID) fyne.CanvasObject 
 		showTodoForm(window, nil, userID, updateTodoList)
 	})
 
+	// Bulk Upload button
+	bulkUploadButton := widget.NewButton("Bulk Upload", func() {
+		openFileDialog := dialog.NewFileOpen(
+			func(reader fyne.URIReadCloser, err error) {
+				if err != nil {
+					dialog.ShowError(err, window)
+					return
+				}
+				if reader == nil {
+					return
+				}
+				defer reader.Close()
+
+				todos, parseErr := parseCSV(reader.URI().Path(), userID)
+				if parseErr != nil {
+					dialog.ShowError(parseErr, window)
+					return
+				}
+
+				utils.BulkInsertTodos(todos, window)
+				updateTodoList() // Refresh list after bulk upload
+			}, window)
+		openFileDialog.SetFilter(storage.NewExtensionFileFilter([]string{".csv"}))
+		openFileDialog.Show()
+	})
+
 	// Search functionality
 	searchEntry = widget.NewEntry()
 	searchEntry.SetPlaceHolder("Search Todos...")
@@ -181,7 +211,7 @@ func TodosView(window fyne.Window, userID primitive.ObjectID) fyne.CanvasObject 
 	})
 
 	// Combine the search entry and button
-	searchContainer := container.New(layout.NewGridLayout(2), searchEntry, searchButton)
+	searchContainer := container.New(layout.NewGridLayout(3), searchEntry, searchButton, bulkUploadButton)
 
 	// No results label
 	noResultsLabel = widget.NewLabel("No results found")
@@ -257,4 +287,46 @@ func showTodoForm(window fyne.Window, existing *models.Todo, UserID primitive.Ob
 			form.OnSubmit() // Call OnSubmit if "Save" is clicked
 		}
 	}, window)
+}
+
+// Function to parse CSV and return a slice of todos
+func parseCSV(filePath string, userID primitive.ObjectID) ([]models.Todo, error) {
+	file, err := os.Open(filePath)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	reader := csv.NewReader(file)
+	records, err := reader.ReadAll()
+	if err != nil {
+		return nil, err
+	}
+
+	var todos []models.Todo
+	for i, record := range records {
+		if i == 0 {
+			continue // Skip header row
+		}
+
+		if len(record) < 3 {
+			continue // Skip rows with insufficient columns
+		}
+
+		done, _ := strconv.ParseBool(record[2])
+		/*if err != nil {
+			return nil, fmt.Errorf("invalid done value in CSV: %v", err)
+		}*/
+
+		todo := models.Todo{
+			ID:      primitive.NewObjectID(), // Generate a new unique ObjectID for each Todo
+			Title:   record[0],
+			Content: record[1],
+			Done:    done,
+			UserID:  userID,
+		}
+		todos = append(todos, todo)
+	}
+
+	return todos, nil
 }
