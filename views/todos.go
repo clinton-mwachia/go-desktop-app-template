@@ -27,6 +27,7 @@ func TodosView(window fyne.Window, userID primitive.ObjectID) fyne.CanvasObject 
 	var prevButton, nextButton *widget.Button
 	var searchResults []models.Todo
 	var searchEntry *widget.Entry
+	var noResultsLabel *widget.Label
 
 	// Load todos for the specified page
 	loadTodos := func(page int) {
@@ -59,8 +60,18 @@ func TodosView(window fyne.Window, userID primitive.ObjectID) fyne.CanvasObject 
 		}
 	}
 
+	// Update visibility of no results label
+	updateNoResultsLabel := func() {
+		if len(todos) == 0 {
+			noResultsLabel.Show()
+		} else {
+			noResultsLabel.Hide()
+		}
+	}
+
 	updateTodoList := func() {
 		loadTodos(currentPage)
+		updateNoResultsLabel()
 	}
 
 	// Header Row with Titles
@@ -158,6 +169,7 @@ func TodosView(window fyne.Window, userID primitive.ObjectID) fyne.CanvasObject 
 		searchText := searchEntry.Text
 		if searchText != "" {
 			searchResults = utils.SearchTodos(searchText, userID, window)
+			updateNoResultsLabel()
 			currentPage = 1 // Reset to first page of search results
 			updateTodoList()
 		} else {
@@ -171,11 +183,15 @@ func TodosView(window fyne.Window, userID primitive.ObjectID) fyne.CanvasObject 
 	// Combine the search entry and button
 	searchContainer := container.New(layout.NewGridLayout(2), searchEntry, searchButton)
 
+	// No results label
+	noResultsLabel = widget.NewLabel("No results found")
+	noResultsLabel.Hide() // Hide by default
+
 	// Load the initial set of todos
 	updateTodoList()
 
 	// Define the container for the list with pagination controls
-	listContainer := container.NewBorder(titleRow, nil, nil, nil, todoList)
+	listContainer := container.NewBorder(titleRow, nil, nil, nil, todoList, noResultsLabel)
 
 	listWrapper := container.NewBorder(addTodoButton, pagination, nil, nil, listContainer)
 
