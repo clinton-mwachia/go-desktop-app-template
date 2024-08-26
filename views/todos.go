@@ -3,6 +3,8 @@ package views
 import (
 	"desktop-app-template/models"
 	"desktop-app-template/utils"
+	"fmt"
+	"math"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
@@ -12,15 +14,67 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
+const (
+	pageSize = 3 // Number of todos per page
+)
+
 func TodosView(window fyne.Window, userID primitive.ObjectID) fyne.CanvasObject {
 	var todoList *widget.List
 	var todos []models.Todo
+	var currentPage int = 1
+	var totalTodos int64 = 0
+	var pageLabel *widget.Label
+	var prevButton, nextButton *widget.Button
+	var searchResults []models.Todo
+	var searchEntry *widget.Entry
+	var noResultsLabel *widget.Label
 
-	updateTodoList := func() {
-		todos = loadTodosByUserID(window, userID)
+	// Load todos for the specified page
+	loadTodos := func(page int) {
+		// Check if search is active
+		if searchEntry.Text != "" {
+			// Use filtered todos when a search query is active
+			todos = searchResults
+			totalTodos = int64(len(todos))
+		} else {
+			// Use all todos for normal pagination
+			todos = utils.GetTodosPaginated(page, pageSize, userID, window)
+			totalTodos = utils.CountTodos(userID, window)
+		}
+
 		todoList.Refresh()
+
+		// Enable or disable pagination buttons based on the current page and total pages
+		totalPages := int(math.Ceil(float64(totalTodos) / float64(pageSize)))
+
+		// Update page label
+		pageLabel.SetText(fmt.Sprintf("Page %d of %d", currentPage, totalPages))
+
+		prevButton.Disable()
+		nextButton.Disable()
+		if currentPage > 1 {
+			prevButton.Enable()
+		}
+		if currentPage < totalPages {
+			nextButton.Enable()
+		}
 	}
 
+	// Update visibility of no results label
+	updateNoResultsLabel := func() {
+		if len(todos) == 0 {
+			noResultsLabel.Show()
+		} else {
+			noResultsLabel.Hide()
+		}
+	}
+
+	updateTodoList := func() {
+		loadTodos(currentPage)
+		updateNoResultsLabel()
+	}
+
+	// Header Row with Titles
 	titleRow := container.NewHBox(
 		widget.NewLabelWithStyle("Title", fyne.TextAlignLeading, fyne.TextStyle{Bold: true}),
 		layout.NewSpacer(),
@@ -29,8 +83,11 @@ func TodosView(window fyne.Window, userID primitive.ObjectID) fyne.CanvasObject 
 		widget.NewLabelWithStyle("Actions", fyne.TextAlignLeading, fyne.TextStyle{Bold: true}),
 	)
 
+	// Create the todos list
 	todoList = widget.NewList(
-		func() int { return len(todos) },
+		func() int {
+			return len(todos)
+		},
 		func() fyne.CanvasObject {
 			titleLabel := widget.NewLabel("")
 			contentLabel := widget.NewLabel("")
@@ -75,23 +132,71 @@ func TodosView(window fyne.Window, userID primitive.ObjectID) fyne.CanvasObject 
 		},
 	)
 
+	// Pagination controls
+	pagination := container.NewHBox()
+	prevButton = widget.NewButton("Previous", func() {
+		if currentPage > 1 {
+			currentPage--
+			updateTodoList()
+		}
+	})
+	nextButton = widget.NewButton("Next", func() {
+		if int(math.Ceil(float64(totalTodos)/float64(pageSize))) > currentPage {
+			currentPage++
+			updateTodoList()
+		}
+	})
+
+	// Initialize page label
+	pageLabel = widget.NewLabel(fmt.Sprintf("Page %d of %d", currentPage, int(math.Ceil(float64(totalTodos)/float64(pageSize)))))
+
+	// Add buttons and label to the pagination container
+	pagination.Add(prevButton)
+	pagination.Add(pageLabel)
+	pagination.Add(nextButton)
+
+	// Center the pagination controls
+	pagination = container.NewCenter(pagination)
+
 	addTodoButton := widget.NewButton("Add Todo", func() {
 		showTodoForm(window, nil, userID, updateTodoList)
 	})
-	// Define the container for the list
-	listContainer := container.NewBorder(titleRow, nil, nil, nil, todoList)
 
-	// Use a container to make the list responsive
-	listWrapper := container.NewBorder(addTodoButton, nil, nil, nil, listContainer)
+	// Search functionality
+	searchEntry = widget.NewEntry()
+	searchEntry.SetPlaceHolder("Search Todos...")
+	searchButton := widget.NewButton("Search Todos", func() {
+		searchText := searchEntry.Text
+		if searchText != "" {
+			searchResults = utils.SearchTodos(searchText, userID, window)
+			updateNoResultsLabel()
+			currentPage = 1 // Reset to first page of search results
+			updateTodoList()
+		} else {
+			// If search is cleared, reset the pagination and todo list
+			searchResults = nil
+			currentPage = 1
+			updateTodoList()
+		}
+	})
 
+	// Combine the search entry and button
+	searchContainer := container.New(layout.NewGridLayout(2), searchEntry, searchButton)
+
+	// No results label
+	noResultsLabel = widget.NewLabel("No results found")
+	noResultsLabel.Hide() // Hide by default
+
+	// Load the initial set of todos
 	updateTodoList()
 
-	return listWrapper
-}
+	// Define the container for the list with pagination controls
+	listContainer := container.NewBorder(titleRow, nil, nil, nil, todoList, noResultsLabel)
 
-// Function to load todos by UserID
-func loadTodosByUserID(window fyne.Window, userID primitive.ObjectID) []models.Todo {
-	return utils.GetTodosByUserID(userID, window)
+	listWrapper := container.NewBorder(addTodoButton, pagination, nil, nil, listContainer)
+
+	// Return the final container with all elements
+	return container.NewBorder(searchContainer, nil, nil, nil, listWrapper)
 }
 
 // Function to display the todo form for adding or editing a todo

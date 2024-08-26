@@ -8,6 +8,7 @@ import (
 	"fyne.io/fyne/v2/dialog"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 // AddTodo adds a new todo to the database.
@@ -16,6 +17,8 @@ func AddTodo(todo models.Todo, window fyne.Window) {
 	_, err := collection.InsertOne(context.TODO(), todo)
 	if err != nil {
 		dialog.ShowError(err, window)
+	} else {
+		dialog.ShowInformation("Success", "Todo added", window)
 	}
 }
 
@@ -111,4 +114,73 @@ func DeleteTodo(id primitive.ObjectID, window fyne.Window) {
 	} else {
 		dialog.ShowInformation("Success", "Todo deleted successfully!", window)
 	}
+}
+
+// GetTodosPaginated fetches todos with pagination from the database
+func GetTodosPaginated(page, limit int, userID primitive.ObjectID, w fyne.Window) []models.Todo {
+	collection := GetCollection("todos")
+
+	skip := (page - 1) * limit
+	findOptions := options.Find()
+	findOptions.SetSkip(int64(skip))
+	findOptions.SetLimit(int64(limit))
+
+	var todos []models.Todo
+
+	cursor, err := collection.Find(context.TODO(), bson.M{"user_id": userID}, findOptions)
+	if err != nil {
+		dialog.ShowError(err, w)
+		return todos
+	}
+	defer cursor.Close(context.TODO())
+
+	if err = cursor.All(context.TODO(), &todos); err != nil {
+		dialog.ShowError(err, w)
+	}
+
+	return todos
+}
+
+// CountTodos returns the total count of todos for a user
+func CountTodos(userID primitive.ObjectID, w fyne.Window) int64 {
+	collection := GetCollection("todos")
+	count, err := collection.CountDocuments(context.TODO(), bson.M{"user_id": userID})
+	if err != nil {
+		dialog.ShowError(err, w)
+	}
+	return count
+}
+
+func SearchTodos(searchText string, userID primitive.ObjectID, window fyne.Window) []models.Todo {
+	collection := GetCollection("todos")
+
+	// Create a case-insensitive regex pattern for the search
+	searchPattern := bson.M{
+		"$regex":   searchText,
+		"$options": "i", // Case-insensitive
+	}
+
+	filter := bson.M{
+		"user_id": userID,
+		"$or": []bson.M{
+			{"title": searchPattern},
+			{"content": searchPattern},
+		},
+	}
+
+	cursor, err := collection.Find(context.TODO(), filter)
+	if err != nil {
+		dialog.ShowError(err, window)
+		return nil
+	}
+	defer cursor.Close(context.TODO())
+
+	var results []models.Todo
+	if err = cursor.All(context.TODO(), &results); err != nil {
+		dialog.ShowError(err, window)
+		return nil
+	}
+
+	return results
+
 }
