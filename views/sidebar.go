@@ -1,19 +1,30 @@
 package views
 
 import (
+	"desktop-app-template/utils"
+
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-func Sidebar(window fyne.Window, showDashboard, showUsers, showTodos, showLogin func()) *fyne.Container {
+func Sidebar(window fyne.Window, showDashboard, showUsers, showTodos, showLogin func(), userID primitive.ObjectID) *fyne.Container {
+	isAdmin := utils.IsAdmin(userID, window)
+
 	dashboardButton := widget.NewButton("Dashboard", func() {
 		showDashboard()
 	})
 
-	usersButton := widget.NewButton("Users", func() {
-		showUsers()
-	})
+	var userButton *widget.Button
+	if isAdmin {
+		userButton = widget.NewButton("Users", func() {
+			showUsers()
+		})
+	} else {
+		userButton = &widget.Button{}
+		userButton.Hide()
+	}
 
 	todosButton := widget.NewButton("Todos", func() {
 		showTodos()
@@ -23,13 +34,11 @@ func Sidebar(window fyne.Window, showDashboard, showUsers, showTodos, showLogin 
 		showLogin()
 	})
 
-	sidebar := container.NewVBox(
+	return container.NewVBox(
 		dashboardButton,
-		usersButton,
+		userButton,
 		todosButton,
 		// layout.NewSpacer(),
 		logoutButton,
 	)
-
-	return sidebar
 }

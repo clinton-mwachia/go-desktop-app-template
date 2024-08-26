@@ -20,21 +20,21 @@ func main() {
 
 	// Function to show the dashboard view
 	showDashboard = func() {
-		sidebar := views.Sidebar(window, showDashboard, showUsers, showTodos, showLogin)
+		sidebar := views.Sidebar(window, showDashboard, showUsers, showTodos, showLogin, utils.CurrentUserID)
 		dashboard := views.DashboardView()
 		window.SetContent(container.NewBorder(nil, nil, sidebar, nil, dashboard))
 	}
 
 	// Function to show the users view
 	showUsers = func() {
-		sidebar := views.Sidebar(window, showDashboard, showUsers, showTodos, showLogin)
+		sidebar := views.Sidebar(window, showDashboard, showUsers, showTodos, showLogin, utils.CurrentUserID)
 		users := views.UsersView(window)
 		window.SetContent(container.NewBorder(nil, nil, sidebar, nil, users))
 	}
 
 	// Function to show the todos view
 	showTodos = func() {
-		sidebar := views.Sidebar(window, showDashboard, showUsers, showTodos, showLogin)
+		sidebar := views.Sidebar(window, showDashboard, showUsers, showTodos, showLogin, utils.CurrentUserID)
 		todos := views.TodosView(window, utils.CurrentUserID)
 		window.SetContent(container.NewBorder(nil, nil, sidebar, nil, todos))
 	}
