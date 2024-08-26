@@ -4,6 +4,7 @@ import (
 	"desktop-app-template/models"
 	"desktop-app-template/utils"
 	"encoding/csv"
+	"encoding/json"
 	"fmt"
 	"math"
 	"os"
@@ -210,7 +211,56 @@ func TodosView(window fyne.Window, userID primitive.ObjectID) fyne.CanvasObject 
 		}
 	})
 
-	// Combine the search entry and button
+	// Define functions for exporting data
+	exportToCSV := widget.NewButton("export to csv", func() {
+		todos := utils.GetTodosByUserID(userID, window)
+		file, err := os.Create("todos.csv")
+		if err != nil {
+			dialog.ShowError(err, window)
+			return
+		}
+		defer file.Close()
+
+		writer := csv.NewWriter(file)
+		defer writer.Flush()
+
+		// Write header
+		writer.Write([]string{"ID", "Title", "Content", "Done"})
+
+		// Write todo data
+		for _, todo := range todos {
+			writer.Write([]string{
+				todo.ID.Hex(),
+				todo.Title,
+				todo.Content,
+				boolToString(todo.Done), // convert bool to string
+			})
+		}
+
+		dialog.ShowInformation("Export Successful", "Todos have been exported to todos.csv", window)
+	})
+
+	exportToJSON := widget.NewButton("export to json", func() {
+		todos := utils.GetTodosByUserID(userID, window) // Adjust as needed for paginated data
+		file, err := os.Create("todos.json")
+		if err != nil {
+			dialog.ShowError(err, window)
+			return
+		}
+		defer file.Close()
+
+		encoder := json.NewEncoder(file)
+		encoder.SetIndent("", "  ")
+		err = encoder.Encode(todos)
+		if err != nil {
+			dialog.ShowError(err, window)
+			return
+		}
+
+		dialog.ShowInformation("Export Successful", "Todos have been exported to todos.json", window)
+	})
+
+	// the search entry and bulk upload button
 	searchContainer := container.New(layout.NewGridLayout(3), searchEntry, searchButton, bulkUploadButton)
 
 	// No results label
@@ -220,10 +270,13 @@ func TodosView(window fyne.Window, userID primitive.ObjectID) fyne.CanvasObject 
 	// Load the initial set of todos
 	updateTodoList()
 
+	// grid for the add todo and export todos button
+	exportButtonContainer := container.New(layout.NewGridLayout(3), addTodoButton, exportToCSV, exportToJSON)
+
 	// Define the container for the list with pagination controls
 	listContainer := container.NewBorder(titleRow, nil, nil, nil, todoList, noResultsLabel)
 
-	listWrapper := container.NewBorder(addTodoButton, pagination, nil, nil, listContainer)
+	listWrapper := container.NewBorder(exportButtonContainer, pagination, nil, nil, listContainer)
 
 	// Return the final container with all elements
 	return container.NewBorder(searchContainer, nil, nil, nil, listWrapper)
@@ -329,4 +382,12 @@ func parseCSV(filePath string, userID primitive.ObjectID) ([]models.Todo, error)
 	}
 
 	return todos, nil
+}
+
+// Helper function to convert bool to string
+func boolToString(b bool) string {
+	if b {
+		return "true"
+	}
+	return "false"
 }
