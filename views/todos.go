@@ -20,7 +20,7 @@ import (
 )
 
 const (
-	pageSize = 3 // Number of todos per page
+	pageSize = 15 // Number of todos per page
 )
 
 func TodosView(window fyne.Window, userID primitive.ObjectID) fyne.CanvasObject {
@@ -33,6 +33,8 @@ func TodosView(window fyne.Window, userID primitive.ObjectID) fyne.CanvasObject 
 	var searchResults []models.Todo
 	var searchEntry *widget.Entry
 	var noResultsLabel *widget.Label
+
+	header := Header(window, userID)
 
 	// Load todos for the specified page
 	loadTodos := func(page int) {
@@ -271,7 +273,7 @@ func TodosView(window fyne.Window, userID primitive.ObjectID) fyne.CanvasObject 
 	updateTodoList()
 
 	// grid for the add todo and export todos button
-	exportButtonContainer := container.New(layout.NewGridLayout(3), addTodoButton, exportToCSV, exportToJSON)
+	exportButtonContainer := container.New(layout.NewGridLayout(4), addTodoButton, exportToCSV, exportToJSON)
 
 	// Define the container for the list with pagination controls
 	listContainer := container.NewBorder(titleRow, nil, nil, nil, todoList, noResultsLabel)
@@ -279,7 +281,7 @@ func TodosView(window fyne.Window, userID primitive.ObjectID) fyne.CanvasObject 
 	listWrapper := container.NewBorder(exportButtonContainer, pagination, nil, nil, listContainer)
 
 	// Return the final container with all elements
-	return container.NewBorder(searchContainer, nil, nil, nil, listWrapper)
+	return container.NewBorder(header, nil, nil, nil, container.NewBorder(searchContainer, nil, nil, nil, listWrapper))
 }
 
 // Function to display the todo form for adding or editing a todo
@@ -318,15 +320,29 @@ func showTodoForm(window fyne.Window, existing *models.Todo, UserID primitive.Ob
 
 			if isEdit {
 				utils.UpdateTodo(todo, window)
+				notification := models.Notification{
+					UserID:  UserID,
+					Message: "Todo has been edited: " + todo.Title,
+				}
+				utils.AddNotification(notification, window)
+				onSubmit()
+
 			} else {
 				todo.ID = primitive.NewObjectID()
 				todo.UserID = UserID // Ensure UserID is set for new todos
 				utils.AddTodo(todo, window)
+				notification := models.Notification{
+					UserID:  UserID,
+					Message: "Todo has been added: " + todo.Title,
+				}
+				utils.AddNotification(notification, window)
+				onSubmit()
 			}
 
 			if onSubmit != nil {
 				onSubmit()
 			}
+
 		},
 	}
 
