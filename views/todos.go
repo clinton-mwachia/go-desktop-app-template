@@ -133,6 +133,7 @@ func TodosView(window fyne.Window, userID primitive.ObjectID) fyne.CanvasObject 
 						if ok {
 							utils.DeleteTodo(todo.ID, window)
 							updateTodoList()
+
 						}
 					}, window)
 			}
@@ -325,7 +326,6 @@ func showTodoForm(window fyne.Window, existing *models.Todo, UserID primitive.Ob
 					Message: "Todo has been edited: " + todo.Title,
 				}
 				utils.AddNotification(notification, window)
-				onSubmit()
 
 			} else {
 				todo.ID = primitive.NewObjectID()
@@ -336,7 +336,7 @@ func showTodoForm(window fyne.Window, existing *models.Todo, UserID primitive.Ob
 					Message: "Todo has been added: " + todo.Title,
 				}
 				utils.AddNotification(notification, window)
-				onSubmit()
+
 			}
 
 			if onSubmit != nil {

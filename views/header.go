@@ -66,6 +66,7 @@ func showNotificationsDialog(window fyne.Window, userID primitive.ObjectID) {
 
 	clearButton := widget.NewButton("Clear Notifications", func() {
 		utils.ClearNotifications(userID, window)
+		notificationList.Refresh()
 		dialog.ShowInformation("Notifications", "All notifications cleared.", window)
 	})
 
