@@ -34,7 +34,7 @@ func TodosView(window fyne.Window, userID primitive.ObjectID) fyne.CanvasObject 
 	var searchEntry *widget.Entry
 	var noResultsLabel *widget.Label
 
-	header := Header(window, userID)
+	header := Header(window)
 
 	// Load todos for the specified page
 	loadTodos := func(page int) {
@@ -321,21 +321,35 @@ func showTodoForm(window fyne.Window, existing *models.Todo, UserID primitive.Ob
 
 			if isEdit {
 				utils.UpdateTodo(todo, window)
-				notification := models.Notification{
-					UserID:  UserID,
-					Message: "Todo has been edited: " + todo.Title,
+				// Create a new notification
+				userID := utils.CurrentUserID
+				newNotification := models.Notification{
+					UserID:  userID,
+					Message: "Todo edited successfully:" + todo.Title,
+					IsRead:  false,
 				}
-				utils.AddNotification(notification, window)
+
+				utils.AddNotification(newNotification, window)
+
+				// Update the notification count
+				updateNotificationCount(window)
 
 			} else {
 				todo.ID = primitive.NewObjectID()
 				todo.UserID = UserID // Ensure UserID is set for new todos
 				utils.AddTodo(todo, window)
-				notification := models.Notification{
-					UserID:  UserID,
-					Message: "Todo has been added: " + todo.Title,
+				// Create a new notification
+				userID := utils.CurrentUserID
+				newNotification := models.Notification{
+					UserID:  userID,
+					Message: "Todo added successfully:" + todo.Title,
+					IsRead:  false,
 				}
-				utils.AddNotification(notification, window)
+
+				utils.AddNotification(newNotification, window)
+
+				// Update the notification count
+				updateNotificationCount(window)
 
 			}
 
