@@ -3,10 +3,14 @@ package utils
 import (
 	"context"
 	"desktop-app-template/models"
+	"os"
 	"time"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/dialog"
+	"github.com/faiface/beep"
+	"github.com/faiface/beep/speaker"
+	"github.com/faiface/beep/wav"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
@@ -85,4 +89,27 @@ func MarkNotificationsAsRead(userID primitive.ObjectID, window fyne.Window) {
 	if err != nil {
 		dialog.ShowError(err, window)
 	}
+}
+
+func PlayNotificationSound(window fyne.Window) {
+	file, err := os.Open("F:/Go/go-desktop-app-template/assets/bell-notification.wav")
+	if err != nil {
+		dialog.ShowError(err, window)
+		return
+	}
+	defer file.Close()
+
+	// Decode the WAV file
+	streamer, format, err := wav.Decode(file)
+	if err != nil {
+		dialog.ShowError(err, window)
+		return
+	}
+	defer streamer.Close()
+
+	// Initialize the speaker
+	speaker.Init(format.SampleRate, format.SampleRate.N(time.Second/10))
+
+	// Play the sound
+	speaker.Play(beep.Seq(streamer, beep.Callback(func() {})))
 }

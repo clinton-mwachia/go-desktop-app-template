@@ -330,6 +330,7 @@ func showTodoForm(window fyne.Window, existing *models.Todo, UserID primitive.Ob
 				}
 
 				utils.AddNotification(newNotification, window)
+				utils.PlayNotificationSound(window)
 
 				// Update the notification count
 				updateNotificationCount(window)
@@ -347,6 +348,7 @@ func showTodoForm(window fyne.Window, existing *models.Todo, UserID primitive.Ob
 				}
 
 				utils.AddNotification(newNotification, window)
+				utils.PlayNotificationSound(window)
 
 				// Update the notification count
 				updateNotificationCount(window)
