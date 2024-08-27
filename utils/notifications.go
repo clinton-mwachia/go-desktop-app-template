@@ -14,46 +14,74 @@ import (
 // AddNotification adds a new notification to the database
 func AddNotification(notification models.Notification, window fyne.Window) {
 	collection := GetCollection("notifications")
-	notification.CreatedAt = time.Now()
+
+	notification.ID = primitive.NewObjectID() // Assign a new ObjectID
+	notification.CreatedAt = primitive.NewDateTimeFromTime(time.Now())
+
 	_, err := collection.InsertOne(context.TODO(), notification)
 	if err != nil {
 		dialog.ShowError(err, window)
 	}
 }
 
-// GetNotifications retrieves all notifications for a user
-func GetNotifications(userID primitive.ObjectID, window fyne.Window) []models.Notification {
-	var notifications []models.Notification
-	collection := GetCollection("notifications")
-	filter := bson.M{"user_id": userID}
-	cursor, err := collection.Find(context.TODO(), filter)
-	if err != nil {
-		dialog.ShowError(err, window)
-		return notifications
-	}
-
-	if err = cursor.All(context.TODO(), &notifications); err != nil {
-		dialog.ShowError(err, window)
-	}
-	return notifications
-}
-
-// MarkNotificationAsRead updates a notification's read status in the database
-func MarkNotificationAsRead(notificationID primitive.ObjectID, window fyne.Window) {
-	collection := GetCollection("notifications")
-	filter := bson.M{"_id": notificationID}
-	update := bson.M{"$set": bson.M{"read": true}}
-	_, err := collection.UpdateOne(context.TODO(), filter, update)
-	if err != nil {
-		dialog.ShowError(err, window)
-	}
-}
-
-// ClearNotifications deletes all notifications for a user
+// ClearNotifications clears all notifications for a user
 func ClearNotifications(userID primitive.ObjectID, window fyne.Window) {
 	collection := GetCollection("notifications")
 	filter := bson.M{"user_id": userID}
+
 	_, err := collection.DeleteMany(context.TODO(), filter)
+	if err != nil {
+		dialog.ShowError(err, window)
+	}
+}
+
+// GetUnreadNotificationsCount returns the count of unread notifications for a user
+func GetUnreadNotificationsCount(userID primitive.ObjectID, window fyne.Window) int {
+	collection := GetCollection("notifications")
+	filter := bson.M{"user_id": userID, "is_read": false}
+
+	count, err := collection.CountDocuments(context.TODO(), filter)
+	if err != nil {
+		dialog.ShowError(err, window)
+		return 0
+	}
+
+	return int(count)
+}
+
+// FetchNotifications retrieves all notifications for a user
+func FetchNotifications(userID primitive.ObjectID, window fyne.Window) []models.Notification {
+	collection := GetCollection("notifications")
+	filter := bson.M{"user_id": userID}
+
+	cur, err := collection.Find(context.TODO(), filter)
+	if err != nil {
+		dialog.ShowError(err, window)
+		return nil
+	}
+	defer cur.Close(context.TODO())
+
+	var notifications []models.Notification
+	for cur.Next(context.TODO()) {
+		var notif models.Notification
+		err := cur.Decode(&notif)
+		if err != nil {
+			dialog.ShowError(err, window)
+			continue
+		}
+		notifications = append(notifications, notif)
+	}
+
+	return notifications
+}
+
+// MarkNotificationsAsRead marks all notifications for a user as read
+func MarkNotificationsAsRead(userID primitive.ObjectID, window fyne.Window) {
+	collection := GetCollection("notifications")
+	filter := bson.M{"user_id": userID, "is_read": false}
+	update := bson.M{"$set": bson.M{"is_read": true}}
+
+	_, err := collection.UpdateMany(context.TODO(), filter, update)
 	if err != nil {
 		dialog.ShowError(err, window)
 	}

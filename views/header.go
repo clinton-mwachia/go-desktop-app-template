@@ -1,6 +1,7 @@
 package views
 
 import (
+	"desktop-app-template/models"
 	"desktop-app-template/utils"
 	"strconv"
 
@@ -10,65 +11,90 @@ import (
 	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-// Header creates a common header for all views with a notification icon
-func Header(window fyne.Window, userID primitive.ObjectID) *fyne.Container {
-	notifications := utils.GetNotifications(userID, window)
+var (
+	notificationCountLabel *widget.Label
+	notificationIcon       *widget.Button
+	notifications          []models.Notification
+)
 
-	unreadCount := 0
-	for _, notification := range notifications {
-		if !notification.Read {
-			unreadCount++
-		}
-	}
-
-	notificationButton := widget.NewButtonWithIcon("", theme.MailComposeIcon(), func() {
-		showNotificationsDialog(window, userID)
+func Header(window fyne.Window) *fyne.Container {
+	// Notification icon button with initial count
+	notificationCountLabel = widget.NewLabel("0")
+	notificationIcon = widget.NewButtonWithIcon("", theme.MailComposeIcon(), func() {
+		showNotifications(window)
 	})
 
-	// Show unread notification count if there are any
-	if unreadCount > 0 {
-		notificationButton.SetText(strconv.Itoa(unreadCount))
-	} else {
-		notificationButton.SetText("")
-	}
+	// Set initial count
+	updateNotificationCount(window)
 
-	// Create a header with the notification button
+	// Header container
 	header := container.NewHBox(
 		widget.NewLabel("Go Template"),
 		layout.NewSpacer(),
-		notificationButton,
+		notificationIcon,
+		notificationCountLabel,
 	)
 
 	return header
 }
 
-// showNotificationsDialog displays a dialog with all notifications
-func showNotificationsDialog(window fyne.Window, userID primitive.ObjectID) {
-	notifications := utils.GetNotifications(userID, window)
+func showNotifications(window fyne.Window) {
+	// Fetch notifications from the database
+	userID := utils.CurrentUserID
+	notifications = utils.FetchNotifications(userID, window)
 
 	if len(notifications) == 0 {
-		dialog.ShowInformation("Notifications", "No notifications available.", window)
+		dialog.ShowInformation("Notifications", "No notifications found.", window)
 		return
 	}
 
-	notificationList := widget.NewList(
+	// Create a list to display notifications
+	list := widget.NewList(
 		func() int { return len(notifications) },
 		func() fyne.CanvasObject {
 			return widget.NewLabel("")
 		},
-		func(i widget.ListItemID, o fyne.CanvasObject) {
-			o.(*widget.Label).SetText(notifications[i].Message)
+		func(id widget.ListItemID, obj fyne.CanvasObject) {
+			obj.(*widget.Label).SetText(notifications[id].Message)
 		},
 	)
 
-	clearButton := widget.NewButton("Clear Notifications", func() {
+	// Create buttons for clearing and marking notifications
+	markAsReadButton := widget.NewButton("Mark All as Read", func() {
+		utils.MarkNotificationsAsRead(userID, window)
+		updateNotificationCount(window)
+		notificationIcon.Refresh()
+		dialog.ShowInformation("Notifications", "All notifications marked as read.", window)
+	})
+
+	clearButton := widget.NewButton("Clear All", func() {
 		utils.ClearNotifications(userID, window)
-		notificationList.Refresh()
+		updateNotificationCount(window)
+		notificationIcon.Refresh()
+		notifications = utils.FetchNotifications(userID, window)
+		list.Refresh() // Refresh the list widget to update UI
 		dialog.ShowInformation("Notifications", "All notifications cleared.", window)
 	})
 
-	dialog.ShowCustom("Notifications", "Close", container.NewBorder(notificationList, nil, nil, nil, clearButton), window)
+	// Create a scrollable container for the list
+	scrollableList := container.NewVScroll(list)
+	scrollableList.SetMinSize(fyne.NewSize(400, 250))
+
+	// Create a container for the list and buttons
+	content := container.NewVBox(
+		scrollableList,
+		container.NewHBox(markAsReadButton, clearButton),
+	)
+
+	// Show notifications in a new window or dialog
+	dialog.ShowCustom("Notifications", "Close", content, window)
+}
+
+func updateNotificationCount(window fyne.Window) {
+	userID := utils.CurrentUserID
+	unreadCount := utils.GetUnreadNotificationsCount(userID, window)
+	notificationCountLabel.SetText(strconv.Itoa(unreadCount))
+	notificationIcon.Refresh()
 }
