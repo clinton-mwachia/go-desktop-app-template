@@ -1,7 +1,10 @@
 package views
 
 import (
-	"fmt"
+	"desktop-app-template/auth"
+	"desktop-app-template/models"
+	"desktop-app-template/utils"
+	"errors"
 	"path/filepath"
 
 	"fyne.io/fyne/v2"
@@ -10,98 +13,155 @@ import (
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/widget"
+	"golang.org/x/crypto/bcrypt"
 )
 
-// settings
+// showSettings displays the settings view with user details and update options
 func showSettings(window fyne.Window) {
+	var user models.User
+
+	loadUser := func() {
+		userID := utils.CurrentUserID
+		user = utils.GetUserByID(userID, window)
+	}
+	loadUser()
 	// Load image from the assets directory
 	imagePath := filepath.Join("assets", "profile.jpg")
 	imageFile := canvas.NewImageFromFile(imagePath)
 	imageFile.FillMode = canvas.ImageFillContain
 	imageFile.SetMinSize(fyne.NewSize(200, 200))
 
-	appSettings := container.NewVBox(
-		container.NewHBox(
-			widget.NewLabel("Theme:"),
-			widget.NewLabel("My theme"),
-		),
-		// Add your theme selection widget here
-		container.NewHBox(
-			widget.NewLabel("Font:"),
-			widget.NewLabel("My Font"),
-		),
-		// Add your font size adjustment widget here
-	)
+	// User details section (Right Side)
+	userDetailsContainer := container.NewVBox()
+	userDetailsContainer.Resize(fyne.NewSize(300, 200))
+
+	// refresh user details in the UI
+	refreshUserDetails := func() {
+		loadUser()
+
+		userDetailsContainer.Objects = []fyne.CanvasObject{
+			widget.NewLabelWithStyle("Username: "+user.Username, fyne.TextAlignLeading, fyne.TextStyle{}),
+			widget.NewLabelWithStyle("Role: "+user.Role, fyne.TextAlignLeading, fyne.TextStyle{}),
+		}
+		userDetailsContainer.Refresh()
+	}
+
+	refreshUserDetails()
 
 	content := container.NewHBox(
+		imageFile,
 		container.NewVBox(
-			imageFile,
-			widget.NewButton("Update User Details", func() {
-				showUpdateUserDetailsDialog(window)
-			}),
-			widget.NewButton("Change Password", func() {
-				showChangePasswordDialog(window)
-			}),
+			userDetailsContainer,
+			container.NewGridWithColumns(2,
+				widget.NewButton("Update Details", func() {
+					showUpdateUserDetailsDialog(window, user, refreshUserDetails)
+				}),
+				widget.NewButton("Change Password", func() {
+					showChangePasswordDialog(window, user)
+				}),
+			),
 		),
-		appSettings,
 	)
 
-	// Center the content and set the size
+	// Center the content
 	centeredContent := container.NewCenter(content)
 	containerWithWidth := container.New(layout.NewStackLayout(), centeredContent)
-	containerWithWidth.Resize(fyne.NewSize(800, 500)) // Adjust the width as needed
+	containerWithWidth.Resize(fyne.NewSize(800, 500))
 
 	dialog.ShowCustom("Settings", "Close", content, window)
 }
 
-// update user details
-func showUpdateUserDetailsDialog(window fyne.Window) {
+// showUpdateUserDetailsDialog displays a dialog for updating user details
+func showUpdateUserDetailsDialog(window fyne.Window, user models.User, updateUserDetailsInView func()) {
 	usernameEntry := widget.NewEntry()
-	usernameEntry.SetPlaceHolder("Username")
+	usernameEntry.SetPlaceHolder("Enter Username")
+	usernameEntry.SetText(user.Username)
 
-	emailEntry := widget.NewEntry()
-	emailEntry.SetPlaceHolder("Email")
+	// Create a select widget for the role field
+	roles := []string{"admin", "user"}
+	roleSelect := widget.NewSelect(roles, func(selectedRole string) {
+		user.Role = selectedRole
+	})
+	roleSelect.SetSelected(user.Role)
 
-	form := &widget.Form{
-		Items: []*widget.FormItem{
-			{Text: "Username", Widget: usernameEntry},
-			{Text: "Email", Widget: emailEntry},
-		},
-		OnSubmit: func() {
-			info := fmt.Sprintf(
-				"Username: %s\nEmail: %s:\n",
-				usernameEntry.Text,
-				emailEntry.Text,
-			)
-			dialog.ShowInformation("Profile Information", info, window)
-		},
+	formItems := []*widget.FormItem{
+		{Text: "Username", Widget: usernameEntry},
+		{Text: "Role", Widget: roleSelect},
 	}
 
-	dialog.ShowForm("Update User Details", "Save", "Cancel", form.Items, nil, window)
+	form := utils.NewFixedWidthCenter(container.NewVBox(widget.NewForm(formItems...)), 300)
+
+	dialog.ShowCustomConfirm("Update User Details", "Save", "Cancel", container.NewCenter(form), func(ok bool) {
+		if !ok {
+			return
+		}
+
+		user.Username = usernameEntry.Text
+		user.Role = roleSelect.Selected
+
+		// Update user details in the database
+		utils.UpdateUser(user, window)
+
+		// Update user details in the view
+		updateUserDetailsInView()
+
+		dialog.ShowInformation("Success", "User details updated successfully.", window)
+	}, window)
 }
 
-// update password
-func showChangePasswordDialog(window fyne.Window) {
-	oldPassword := widget.NewPasswordEntry()
-	oldPassword.SetPlaceHolder("Old Password")
+// showChangePasswordDialog displays a dialog for changing the user's password
+func showChangePasswordDialog(window fyne.Window, user models.User) {
+	currentPasswordEntry := widget.NewPasswordEntry()
+	currentPasswordEntry.SetPlaceHolder("Enter Current Password")
 
-	newPassword := widget.NewPasswordEntry()
-	newPassword.SetPlaceHolder("New Password")
+	newPasswordEntry := widget.NewPasswordEntry()
+	newPasswordEntry.SetPlaceHolder("Enter New Password")
 
-	form := &widget.Form{
-		Items: []*widget.FormItem{
-			{Text: "Old Password", Widget: oldPassword},
-			{Text: "New Password", Widget: newPassword},
-		},
-		OnSubmit: func() {
-			info := fmt.Sprintf(
-				"oldPassword: %s\nnewPassword: %s:\n",
-				oldPassword.Text,
-				newPassword.Text,
-			)
-			dialog.ShowInformation("Password", info, window)
-		},
+	confirmPasswordEntry := widget.NewPasswordEntry()
+	confirmPasswordEntry.SetPlaceHolder("Confirm New Password")
+
+	formItems := []*widget.FormItem{
+		{Text: "Current Password", Widget: currentPasswordEntry},
+		{Text: "New Password", Widget: newPasswordEntry},
+		{Text: "Confirm Password", Widget: confirmPasswordEntry},
 	}
 
-	dialog.ShowForm("Change Password", "Save", "Cancel", form.Items, nil, window)
+	form := utils.NewFixedWidthCenter(container.NewVBox(widget.NewForm(formItems...)), 400)
+
+	dialog.ShowCustomConfirm("Change Password", "Save", "Cancel", container.NewCenter(form), func(ok bool) {
+		if !ok {
+			return
+		}
+
+		oldPassword := currentPasswordEntry.Text
+		newPassword := newPasswordEntry.Text
+		confirmPassword := confirmPasswordEntry.Text
+
+		// Verify that old password matches the stored password hash.
+		if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(oldPassword)); err != nil {
+			dialog.ShowError(errors.New("old password is incorrect"), window)
+			return
+		}
+
+		// Check if the new password is the same as the old password.
+		if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(newPassword)); err == nil {
+			dialog.ShowError(errors.New("new password cannot be the same as the old password"), window)
+			return
+		}
+
+		if newPassword != confirmPassword {
+			dialog.ShowError(errors.New("new password and confirm password do not match"), window)
+			return
+		}
+
+		// Update password in the database
+		err := auth.UpdateUserPassword(user.ID, newPassword, window)
+		if err != nil {
+			dialog.ShowError(err, window)
+			return
+		}
+
+		dialog.ShowInformation("Success", "Password changed successfully. Please log in again.", window)
+
+	}, window)
 }
