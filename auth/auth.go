@@ -5,6 +5,8 @@ import (
 	"desktop-app-template/models"
 	"desktop-app-template/utils"
 
+	"fyne.io/fyne/v2"
+	"fyne.io/fyne/v2/dialog"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -67,4 +69,29 @@ func Login(username, password string) (*models.User, error) {
 	}
 
 	return &user, nil
+}
+
+// UpdateUserPassword updates the user's password in the database.
+func UpdateUserPassword(userID primitive.ObjectID, password string, window fyne.Window) error {
+	collection := utils.GetCollection("users")
+
+	newHashedPassword, err := HashPassword(password)
+
+	if err != nil {
+		return err
+	}
+
+	// Update the user's password field in the database.
+	_, err = collection.UpdateOne(
+		context.Background(),
+		bson.M{"_id": userID},
+		bson.M{"$set": bson.M{"password": newHashedPassword}},
+	)
+
+	if err != nil {
+		dialog.ShowError(err, window)
+		return err
+	}
+
+	return nil
 }
