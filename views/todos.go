@@ -9,6 +9,7 @@ import (
 	"math"
 	"os"
 	"strconv"
+	"time"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
@@ -87,6 +88,10 @@ func TodosView(window fyne.Window, userID primitive.ObjectID) fyne.CanvasObject 
 		layout.NewSpacer(),
 		widget.NewLabelWithStyle("Content", fyne.TextAlignLeading, fyne.TextStyle{Bold: true}),
 		layout.NewSpacer(),
+		widget.NewLabelWithStyle("CreatedAt", fyne.TextAlignLeading, fyne.TextStyle{Bold: true}),
+		layout.NewSpacer(),
+		widget.NewLabelWithStyle("UpdatedAt", fyne.TextAlignLeading, fyne.TextStyle{Bold: true}),
+		layout.NewSpacer(),
 		widget.NewLabelWithStyle("Actions", fyne.TextAlignLeading, fyne.TextStyle{Bold: true}),
 	)
 
@@ -96,8 +101,16 @@ func TodosView(window fyne.Window, userID primitive.ObjectID) fyne.CanvasObject 
 			return len(todos)
 		},
 		func() fyne.CanvasObject {
-			titleLabel := widget.NewLabel("")
-			contentLabel := widget.NewLabel("")
+			// title label
+			titleLabel := widget.NewLabelWithStyle("", fyne.TextAlignLeading, fyne.TextStyle{})
+			titleLabel.Wrapping = fyne.TextWrapWord
+			titleLabel.Resize(fyne.NewSize(300, 0))
+
+			// content label
+			contentLabel := widget.NewLabelWithStyle("", fyne.TextAlignLeading, fyne.TextStyle{})
+
+			createdAtLabel := widget.NewLabelWithStyle("", fyne.TextAlignLeading, fyne.TextStyle{})
+			updatedAtLabel := widget.NewLabelWithStyle("", fyne.TextAlignLeading, fyne.TextStyle{})
 			editButton := widget.NewButton("Edit", nil)
 			deleteButton := widget.NewButton("Delete", nil)
 
@@ -106,6 +119,9 @@ func TodosView(window fyne.Window, userID primitive.ObjectID) fyne.CanvasObject 
 				layout.NewSpacer(),
 				contentLabel,
 				layout.NewSpacer(),
+				createdAtLabel,
+				layout.NewSpacer(),
+				updatedAtLabel,
 				container.NewHBox(editButton, deleteButton),
 			)
 			return row
@@ -116,12 +132,16 @@ func TodosView(window fyne.Window, userID primitive.ObjectID) fyne.CanvasObject 
 
 			titleLabel := row.Objects[0].(*widget.Label)
 			contentLabel := row.Objects[2].(*widget.Label)
-			actionButtons := row.Objects[4].(*fyne.Container)
+			createdAtLabel := row.Objects[4].(*widget.Label)
+			updatedAtLabel := row.Objects[6].(*widget.Label)
+			actionButtons := row.Objects[7].(*fyne.Container)
 			editButton := actionButtons.Objects[0].(*widget.Button)
 			deleteButton := actionButtons.Objects[1].(*widget.Button)
 
 			titleLabel.SetText(todo.Title)
 			contentLabel.SetText(todo.Content)
+			createdAtLabel.SetText(todo.CreatedAt.Format("2006-01-02 15:04:05")) // convert time to string
+			updatedAtLabel.SetText(todo.UpdatedAt.Format("2006-01-02 15:04:05")) // convert time to string
 
 			editButton.OnTapped = func() {
 				showTodoForm(window, &todo, userID, updateTodoList)
@@ -320,6 +340,14 @@ func showTodoForm(window fyne.Window, existing *models.Todo, UserID primitive.Ob
 			todo.Done = done.Checked
 
 			if isEdit {
+				parsedTime, err := time.Parse("2006-01-02 15:04:05", time.Now().Format("2006-01-02 15:04:05"))
+
+				if err != nil {
+					dialog.ShowError(err, window)
+					return
+				}
+
+				todo.UpdatedAt = parsedTime
 				utils.UpdateTodo(todo, window)
 				// Create a new notification
 				userID := utils.CurrentUserID
@@ -338,6 +366,13 @@ func showTodoForm(window fyne.Window, existing *models.Todo, UserID primitive.Ob
 			} else {
 				todo.ID = primitive.NewObjectID()
 				todo.UserID = UserID // Ensure UserID is set for new todos
+				parsedTime, err := time.Parse("2006-01-02 15:04:05", time.Now().Format("2006-01-02 15:04:05"))
+
+				if err != nil {
+					dialog.ShowError(err, window)
+					return
+				}
+				todo.CreatedAt = parsedTime
 				utils.AddTodo(todo, window)
 				// Create a new notification
 				userID := utils.CurrentUserID
