@@ -3,11 +3,13 @@ package utils
 import (
 	"context"
 	"desktop-app-template/models"
+	"time"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/dialog"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
@@ -79,6 +81,13 @@ func BulkInsertTodos(todos []models.Todo, window fyne.Window) {
 	var docs []interface{}
 
 	for _, todo := range todos {
+		parsedTime, err := time.Parse("2006-01-02 15:04:05", time.Now().Format("2006-01-02 15:04:05"))
+
+		if err != nil {
+			dialog.ShowError(err, window)
+			return
+		}
+		todo.CreatedAt = parsedTime
 		docs = append(docs, todo)
 	}
 
@@ -151,6 +160,7 @@ func CountTodos(userID primitive.ObjectID, w fyne.Window) int64 {
 	return count
 }
 
+// search todos by quering the db
 func SearchTodos(searchText string, userID primitive.ObjectID, window fyne.Window) []models.Todo {
 	collection := GetCollection("todos")
 
@@ -183,4 +193,106 @@ func SearchTodos(searchText string, userID primitive.ObjectID, window fyne.Windo
 
 	return results
 
+}
+
+// get todo statistics fromthe db
+func FetchTodoStatistics(userID primitive.ObjectID, window fyne.Window) (int, int, int) {
+	collection := GetCollection("todos")
+
+	// Context with timeout to avoid long-running queries
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	// Total Todos count
+	totalCount, err := collection.CountDocuments(ctx, bson.M{"user_id": userID})
+	if err != nil {
+		dialog.ShowError(err, window)
+		return 0, 0, 0
+	}
+
+	// Completed Todos count (Done: true)
+	completedCount, err := collection.CountDocuments(ctx, bson.M{"user_id": userID, "done": true})
+	if err != nil {
+		dialog.ShowError(err, window)
+		return int(totalCount), 0, 0
+	}
+
+	// Pending Todos count (Done: false)
+	pendingCount, err := collection.CountDocuments(ctx, bson.M{"user_id": userID, "done": false})
+	if err != nil {
+		dialog.ShowError(err, window)
+		return int(totalCount), int(completedCount), 0
+	}
+
+	return int(totalCount), int(completedCount), int(pendingCount)
+}
+
+// FetchTodoDataForCharts fetches the todos data grouped by status and creation date for charts.
+func FetchTodoDataForCharts(userID primitive.ObjectID, window fyne.Window) (map[string]int, map[time.Time]int) {
+	collection := GetCollection("todos")
+
+	// Context with timeout to avoid long-running queries
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	// Bar chart data: count of todos grouped by done bool
+	doneData := map[string]int{"true": 0, "false": 0}
+	cursor, err := collection.Aggregate(ctx, mongo.Pipeline{
+		{{Key: "$match", Value: bson.D{{Key: "user_id", Value: userID}}}},
+		{{Key: "$group", Value: bson.D{{Key: "_id", Value: "$done"}, {Key: "count", Value: bson.D{{Key: "$sum", Value: 1}}}}}},
+	})
+	if err != nil {
+		dialog.ShowError(err, window)
+		return doneData, nil
+	}
+	defer cursor.Close(ctx)
+
+	for cursor.Next(ctx) {
+		var result struct {
+			ID    bool `bson:"_id"`
+			Count int  `bson:"count"`
+		}
+		if err := cursor.Decode(&result); err != nil {
+			dialog.ShowError(err, window)
+			return doneData, nil
+		}
+
+		if result.ID {
+			doneData["true"] = result.Count
+		} else {
+			doneData["false"] = result.Count
+		}
+	}
+
+	// Line chart data: count of todos grouped by creation date (daily)
+	dateData := make(map[time.Time]int)
+	cursor, err = collection.Aggregate(ctx, mongo.Pipeline{
+		{{Key: "$match", Value: bson.D{{Key: "user_id", Value: userID}}}},
+		{{Key: "$group", Value: bson.D{{Key: "_id", Value: bson.D{{Key: "$dateToString", Value: bson.D{{Key: "format", Value: "%Y-%m-%d"}, {Key: "date", Value: "$created_at"}}}}}, {Key: "count", Value: bson.D{{Key: "$sum", Value: 1}}}}}},
+	})
+	if err != nil {
+		dialog.ShowError(err, window)
+		return doneData, dateData
+	}
+	defer cursor.Close(ctx)
+
+	for cursor.Next(ctx) {
+		var result struct {
+			ID    string `bson:"_id"`
+			Count int    `bson:"count"`
+		}
+		if err := cursor.Decode(&result); err != nil {
+			dialog.ShowError(err, window)
+			return doneData, dateData
+		}
+
+		parsedDate, err := time.Parse("2006-01-02", result.ID)
+		if err != nil {
+			dialog.ShowError(err, window)
+			continue
+		}
+		dateData[parsedDate] = result.Count
+	}
+
+	return doneData, dateData
 }
