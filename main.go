@@ -21,7 +21,7 @@ func main() {
 	// Function to show the dashboard view
 	showDashboard = func() {
 		sidebar := views.Sidebar(window, showDashboard, showUsers, showTodos, showLogin, utils.CurrentUserID)
-		dashboard := views.DashboardView()
+		dashboard := views.DashboardView(window)
 		window.SetContent(container.NewBorder(nil, nil, sidebar, nil, dashboard))
 	}
 

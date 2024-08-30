@@ -3,11 +3,14 @@ package utils
 import (
 	"context"
 	"desktop-app-template/models"
+	"fmt"
+	"time"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/dialog"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
@@ -74,11 +77,19 @@ func GetTodosByUserID(userID primitive.ObjectID, window fyne.Window) []models.To
 }
 
 // BulkInsertTodos inserts multiple todos into the database.
-func BulkInsertTodos(todos []models.Todo, window fyne.Window) {
+func BulkInsertTodos(todos []models.Todo, userID primitive.ObjectID, window fyne.Window) {
 	collection := GetCollection("todos")
 	var docs []interface{}
 
 	for _, todo := range todos {
+		parsedTime, err := time.Parse("2006-01-02 15:04:05", time.Now().Format("2006-01-02 15:04:05"))
+
+		if err != nil {
+			dialog.ShowError(err, window)
+			return
+		}
+		todo.CreatedAt = parsedTime
+		todo.UserID = userID
 		docs = append(docs, todo)
 	}
 
@@ -151,6 +162,7 @@ func CountTodos(userID primitive.ObjectID, w fyne.Window) int64 {
 	return count
 }
 
+// search todos by quering the db
 func SearchTodos(searchText string, userID primitive.ObjectID, window fyne.Window) []models.Todo {
 	collection := GetCollection("todos")
 
@@ -183,4 +195,125 @@ func SearchTodos(searchText string, userID primitive.ObjectID, window fyne.Windo
 
 	return results
 
+}
+
+// get todo statistics fromthe db
+func FetchTodoStatistics(userID primitive.ObjectID, window fyne.Window) (int, int, int) {
+	collection := GetCollection("todos")
+
+	// Context with timeout to avoid long-running queries
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	// Total Todos count
+	totalCount, err := collection.CountDocuments(ctx, bson.M{"user_id": userID})
+	if err != nil {
+		dialog.ShowError(err, window)
+		return 0, 0, 0
+	}
+
+	// Completed Todos count (Done: true)
+	completedCount, err := collection.CountDocuments(ctx, bson.M{"user_id": userID, "done": true})
+	if err != nil {
+		dialog.ShowError(err, window)
+		return int(totalCount), 0, 0
+	}
+
+	// Pending Todos count (Done: false)
+	pendingCount, err := collection.CountDocuments(ctx, bson.M{"user_id": userID, "done": false})
+	if err != nil {
+		dialog.ShowError(err, window)
+		return int(totalCount), int(completedCount), 0
+	}
+
+	return int(totalCount), int(completedCount), int(pendingCount)
+}
+
+// FetchTodoDataForCharts fetches the todos data grouped by done status and creation month/year for charts.
+func FetchTodoDataForCharts(userID primitive.ObjectID, window fyne.Window) (map[string]int, map[string]int) {
+	collection := GetCollection("todos")
+
+	// Context with timeout to avoid long-running queries
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	// Bar chart data: count of todos grouped by done bool
+	doneData := map[string]int{"true": 0, "false": 0}
+	cursor, err := collection.Aggregate(ctx, mongo.Pipeline{
+		{{Key: "$match", Value: bson.D{{Key: "user_id", Value: userID}}}},
+		{{Key: "$group", Value: bson.D{{Key: "_id", Value: "$done"}, {Key: "count", Value: bson.D{{Key: "$sum", Value: 1}}}}}},
+	})
+	if err != nil {
+		dialog.ShowError(err, window)
+		return doneData, nil
+	}
+	defer cursor.Close(ctx)
+
+	// Process bar chart data
+	for cursor.Next(ctx) {
+		var result struct {
+			ID    bool `bson:"_id"`
+			Count int  `bson:"count"`
+		}
+		if err := cursor.Decode(&result); err != nil {
+			dialog.ShowError(err, window)
+			return doneData, nil
+		}
+
+		if result.ID {
+			doneData["true"] = result.Count
+		} else {
+			doneData["false"] = result.Count
+		}
+	}
+
+	// Check if there were any errors during the cursor iteration
+	if err := cursor.Err(); err != nil {
+		dialog.ShowError(err, window)
+		return doneData, nil
+	}
+
+	// Line chart data: count of todos grouped by creation month/year
+	dateData := make(map[string]int)
+	cursor, err = collection.Aggregate(ctx, mongo.Pipeline{
+		{{Key: "$match", Value: bson.D{{Key: "user_id", Value: userID}}}},
+		{{Key: "$group", Value: bson.D{
+			{Key: "_id", Value: bson.D{
+				{Key: "year", Value: bson.D{{Key: "$year", Value: "$created_at"}}},
+				{Key: "month", Value: bson.D{{Key: "$month", Value: "$created_at"}}},
+			}},
+			{Key: "count", Value: bson.D{{Key: "$sum", Value: 1}}},
+		}}},
+	})
+	if err != nil {
+		dialog.ShowError(err, window)
+		return doneData, dateData
+	}
+	defer cursor.Close(ctx)
+
+	// Process line chart data
+	for cursor.Next(ctx) {
+		var result struct {
+			ID struct {
+				Year  int `bson:"year"`
+				Month int `bson:"month"`
+			} `bson:"_id"`
+			Count int `bson:"count"`
+		}
+		if err := cursor.Decode(&result); err != nil {
+			dialog.ShowError(err, window)
+			return doneData, dateData
+		}
+
+		// Format as "YYYY-MM" for grouping by month and year
+		dateKey := fmt.Sprintf("%d-%02d", result.ID.Year, result.ID.Month)
+		dateData[dateKey] = result.Count
+	}
+
+	// Check if there were any errors during the cursor iteration
+	if err := cursor.Err(); err != nil {
+		dialog.ShowError(err, window)
+	}
+
+	return doneData, dateData
 }
