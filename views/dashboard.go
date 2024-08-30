@@ -30,12 +30,20 @@ func DashboardView(window fyne.Window) *fyne.Container {
 
 	// Fetch statistics and data from the database
 	totalTodos, completedTodos, pendingTodos := utils.FetchTodoStatistics(userID, window)
-	//statusData, creationData := utils.FetchTodoDataForCharts(userID, window)
+	doneData, dateData := utils.FetchTodoDataForCharts(userID, window)
 
 	// Create statistics boxes
 	totalBox := createStatisticsBox("Total Todos", strconv.Itoa(totalTodos))
 	completedBox := createStatisticsBox("Completed Todos", strconv.Itoa(completedTodos))
 	pendingBox := createStatisticsBox("Pending Todos", strconv.Itoa(pendingTodos))
+
+	// summaries
+	doneStats := utils.DisplayDoneStatistics(doneData)
+	dateStats := utils.TopFiveMonths(dateData)
+	comparisonStats := utils.CompareMonthlyTodoData(dateData)
+	mostProductiveStat := utils.MostProductiveMonth(dateData)
+	avgTodosPerMonth := utils.CalculateAverageTodosPerMonth(dateData)
+	completionRate := utils.CompletionRate(doneData)
 
 	// Layout for the statistics boxes
 	statsContainer := container.New(layout.NewGridLayout(3),
@@ -44,5 +52,15 @@ func DashboardView(window fyne.Window) *fyne.Container {
 		pendingBox,
 	)
 
-	return container.NewStack(statsContainer)
+	summariesContainer := container.New(layout.NewGridLayout(3),
+		widget.NewLabelWithStyle(doneStats, fyne.TextAlignCenter, fyne.TextStyle{Bold: true}),
+		widget.NewLabelWithStyle(dateStats, fyne.TextAlignCenter, fyne.TextStyle{Bold: true}),
+		widget.NewLabelWithStyle(comparisonStats, fyne.TextAlignCenter, fyne.TextStyle{Bold: true}))
+
+	anotherContainer := container.New(layout.NewGridLayout(3),
+		widget.NewLabelWithStyle(mostProductiveStat, fyne.TextAlignCenter, fyne.TextStyle{Bold: true}),
+		widget.NewLabelWithStyle(avgTodosPerMonth, fyne.TextAlignCenter, fyne.TextStyle{Bold: true}),
+		widget.NewLabelWithStyle(completionRate, fyne.TextAlignCenter, fyne.TextStyle{Bold: true}))
+
+	return container.NewBorder(statsContainer, nil, nil, nil, container.NewVBox(summariesContainer, anotherContainer))
 }

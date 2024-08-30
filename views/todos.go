@@ -103,8 +103,6 @@ func TodosView(window fyne.Window, userID primitive.ObjectID) fyne.CanvasObject 
 		func() fyne.CanvasObject {
 			// title label
 			titleLabel := widget.NewLabelWithStyle("", fyne.TextAlignLeading, fyne.TextStyle{})
-			titleLabel.Wrapping = fyne.TextWrapWord
-			titleLabel.Resize(fyne.NewSize(300, 0))
 
 			// content label
 			contentLabel := widget.NewLabelWithStyle("", fyne.TextAlignLeading, fyne.TextStyle{})
@@ -209,7 +207,7 @@ func TodosView(window fyne.Window, userID primitive.ObjectID) fyne.CanvasObject 
 					return
 				}
 
-				utils.BulkInsertTodos(todos, window)
+				utils.BulkInsertTodos(todos, userID, window)
 				updateTodoList() // Refresh list after bulk upload
 			}, window)
 		openFileDialog.SetFilter(storage.NewExtensionFileFilter([]string{".csv"}))
