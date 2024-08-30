@@ -3,6 +3,7 @@ package utils
 import (
 	"context"
 	"desktop-app-template/models"
+	"fmt"
 	"time"
 
 	"fyne.io/fyne/v2"
@@ -76,7 +77,7 @@ func GetTodosByUserID(userID primitive.ObjectID, window fyne.Window) []models.To
 }
 
 // BulkInsertTodos inserts multiple todos into the database.
-func BulkInsertTodos(todos []models.Todo, window fyne.Window) {
+func BulkInsertTodos(todos []models.Todo, userID primitive.ObjectID, window fyne.Window) {
 	collection := GetCollection("todos")
 	var docs []interface{}
 
@@ -88,6 +89,7 @@ func BulkInsertTodos(todos []models.Todo, window fyne.Window) {
 			return
 		}
 		todo.CreatedAt = parsedTime
+		todo.UserID = userID
 		docs = append(docs, todo)
 	}
 
@@ -227,8 +229,8 @@ func FetchTodoStatistics(userID primitive.ObjectID, window fyne.Window) (int, in
 	return int(totalCount), int(completedCount), int(pendingCount)
 }
 
-// FetchTodoDataForCharts fetches the todos data grouped by status and creation date for charts.
-func FetchTodoDataForCharts(userID primitive.ObjectID, window fyne.Window) (map[string]int, map[time.Time]int) {
+// FetchTodoDataForCharts fetches the todos data grouped by done status and creation month/year for charts.
+func FetchTodoDataForCharts(userID primitive.ObjectID, window fyne.Window) (map[string]int, map[string]int) {
 	collection := GetCollection("todos")
 
 	// Context with timeout to avoid long-running queries
@@ -247,6 +249,7 @@ func FetchTodoDataForCharts(userID primitive.ObjectID, window fyne.Window) (map[
 	}
 	defer cursor.Close(ctx)
 
+	// Process bar chart data
 	for cursor.Next(ctx) {
 		var result struct {
 			ID    bool `bson:"_id"`
@@ -264,11 +267,23 @@ func FetchTodoDataForCharts(userID primitive.ObjectID, window fyne.Window) (map[
 		}
 	}
 
-	// Line chart data: count of todos grouped by creation date (daily)
-	dateData := make(map[time.Time]int)
+	// Check if there were any errors during the cursor iteration
+	if err := cursor.Err(); err != nil {
+		dialog.ShowError(err, window)
+		return doneData, nil
+	}
+
+	// Line chart data: count of todos grouped by creation month/year
+	dateData := make(map[string]int)
 	cursor, err = collection.Aggregate(ctx, mongo.Pipeline{
 		{{Key: "$match", Value: bson.D{{Key: "user_id", Value: userID}}}},
-		{{Key: "$group", Value: bson.D{{Key: "_id", Value: bson.D{{Key: "$dateToString", Value: bson.D{{Key: "format", Value: "%Y-%m-%d"}, {Key: "date", Value: "$created_at"}}}}}, {Key: "count", Value: bson.D{{Key: "$sum", Value: 1}}}}}},
+		{{Key: "$group", Value: bson.D{
+			{Key: "_id", Value: bson.D{
+				{Key: "year", Value: bson.D{{Key: "$year", Value: "$created_at"}}},
+				{Key: "month", Value: bson.D{{Key: "$month", Value: "$created_at"}}},
+			}},
+			{Key: "count", Value: bson.D{{Key: "$sum", Value: 1}}},
+		}}},
 	})
 	if err != nil {
 		dialog.ShowError(err, window)
@@ -276,22 +291,28 @@ func FetchTodoDataForCharts(userID primitive.ObjectID, window fyne.Window) (map[
 	}
 	defer cursor.Close(ctx)
 
+	// Process line chart data
 	for cursor.Next(ctx) {
 		var result struct {
-			ID    string `bson:"_id"`
-			Count int    `bson:"count"`
+			ID struct {
+				Year  int `bson:"year"`
+				Month int `bson:"month"`
+			} `bson:"_id"`
+			Count int `bson:"count"`
 		}
 		if err := cursor.Decode(&result); err != nil {
 			dialog.ShowError(err, window)
 			return doneData, dateData
 		}
 
-		parsedDate, err := time.Parse("2006-01-02", result.ID)
-		if err != nil {
-			dialog.ShowError(err, window)
-			continue
-		}
-		dateData[parsedDate] = result.Count
+		// Format as "YYYY-MM" for grouping by month and year
+		dateKey := fmt.Sprintf("%d-%02d", result.ID.Year, result.ID.Month)
+		dateData[dateKey] = result.Count
+	}
+
+	// Check if there were any errors during the cursor iteration
+	if err := cursor.Err(); err != nil {
+		dialog.ShowError(err, window)
 	}
 
 	return doneData, dateData
