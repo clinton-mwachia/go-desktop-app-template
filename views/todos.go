@@ -5,10 +5,12 @@ import (
 	"desktop-app-template/utils"
 	"encoding/csv"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"fyne.io/fyne/v2"
@@ -106,19 +108,16 @@ func TodosView(window fyne.Window, userID primitive.ObjectID) fyne.CanvasObject 
 
 			// content label
 			contentLabel := widget.NewLabelWithStyle("", fyne.TextAlignLeading, fyne.TextStyle{})
-
+			contentLabel.Wrapping = fyne.TextWrapWord
 			createdAtLabel := widget.NewLabelWithStyle("", fyne.TextAlignLeading, fyne.TextStyle{})
 			updatedAtLabel := widget.NewLabelWithStyle("", fyne.TextAlignLeading, fyne.TextStyle{})
 			editButton := widget.NewButton("Edit", nil)
 			deleteButton := widget.NewButton("Delete", nil)
 
-			row := container.NewHBox(
+			row := container.NewGridWithColumns(5,
 				titleLabel,
-				layout.NewSpacer(),
 				contentLabel,
-				layout.NewSpacer(),
 				createdAtLabel,
-				layout.NewSpacer(),
 				updatedAtLabel,
 				container.NewHBox(editButton, deleteButton),
 			)
@@ -128,13 +127,14 @@ func TodosView(window fyne.Window, userID primitive.ObjectID) fyne.CanvasObject 
 			todo := todos[id]
 			row := obj.(*fyne.Container)
 
+			// Retrieve the components in the row
 			titleLabel := row.Objects[0].(*widget.Label)
-			contentLabel := row.Objects[2].(*widget.Label)
-			createdAtLabel := row.Objects[4].(*widget.Label)
-			updatedAtLabel := row.Objects[6].(*widget.Label)
-			actionButtons := row.Objects[7].(*fyne.Container)
-			editButton := actionButtons.Objects[0].(*widget.Button)
-			deleteButton := actionButtons.Objects[1].(*widget.Button)
+			contentLabel := row.Objects[1].(*widget.Label)
+			createdAtLabel := row.Objects[2].(*widget.Label)
+			updatedAtLabel := row.Objects[3].(*widget.Label)
+
+			editButton := row.Objects[4].(*fyne.Container).Objects[0].(*widget.Button)
+			deleteButton := row.Objects[4].(*fyne.Container).Objects[1].(*widget.Button)
 
 			titleLabel.SetText(todo.Title)
 			contentLabel.SetText(todo.Content)
@@ -201,14 +201,24 @@ func TodosView(window fyne.Window, userID primitive.ObjectID) fyne.CanvasObject 
 				}
 				defer reader.Close()
 
+				// Check file extension before proceeding
+				if !strings.HasSuffix(reader.URI().Name(), ".csv") {
+					dialog.ShowError(errors.New("invalid file format, please upload a CSV file"), window)
+					return
+				}
+
 				todos, parseErr := parseCSV(reader.URI().Path(), userID)
 				if parseErr != nil {
 					dialog.ShowError(parseErr, window)
 					return
 				}
+				if len(todos) > 0 {
+					utils.BulkInsertTodos(todos, userID, window)
+					updateTodoList() // Refresh list after bulk upload
+				} else {
+					dialog.ShowInformation("No Todos Imported", "No valid todos were found in the CSV file.", window)
+				}
 
-				utils.BulkInsertTodos(todos, userID, window)
-				updateTodoList() // Refresh list after bulk upload
 			}, window)
 		openFileDialog.SetFilter(storage.NewExtensionFileFilter([]string{".csv"}))
 		openFileDialog.Show()
