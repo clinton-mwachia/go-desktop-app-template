@@ -5,10 +5,12 @@ import (
 	"desktop-app-template/utils"
 	"encoding/csv"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"fyne.io/fyne/v2"
@@ -103,24 +105,26 @@ func TodosView(window fyne.Window, userID primitive.ObjectID) fyne.CanvasObject 
 		func() fyne.CanvasObject {
 			// title label
 			titleLabel := widget.NewLabelWithStyle("", fyne.TextAlignLeading, fyne.TextStyle{})
+			titleLabel.Truncation = fyne.TextTruncation(fyne.TextTruncateEllipsis)
 
 			// content label
 			contentLabel := widget.NewLabelWithStyle("", fyne.TextAlignLeading, fyne.TextStyle{})
+			contentLabel.Truncation = fyne.TextTruncation(fyne.TextTruncateEllipsis)
 
+			// time
 			createdAtLabel := widget.NewLabelWithStyle("", fyne.TextAlignLeading, fyne.TextStyle{})
 			updatedAtLabel := widget.NewLabelWithStyle("", fyne.TextAlignLeading, fyne.TextStyle{})
+
 			editButton := widget.NewButton("Edit", nil)
 			deleteButton := widget.NewButton("Delete", nil)
+			previewButton := widget.NewButton("Preview", nil)
 
-			row := container.NewHBox(
+			row := container.NewGridWithColumns(5,
 				titleLabel,
-				layout.NewSpacer(),
 				contentLabel,
-				layout.NewSpacer(),
 				createdAtLabel,
-				layout.NewSpacer(),
 				updatedAtLabel,
-				container.NewHBox(editButton, deleteButton),
+				container.NewHBox(editButton, deleteButton, previewButton),
 			)
 			return row
 		},
@@ -128,13 +132,15 @@ func TodosView(window fyne.Window, userID primitive.ObjectID) fyne.CanvasObject 
 			todo := todos[id]
 			row := obj.(*fyne.Container)
 
+			// Retrieve the components in the row
 			titleLabel := row.Objects[0].(*widget.Label)
-			contentLabel := row.Objects[2].(*widget.Label)
-			createdAtLabel := row.Objects[4].(*widget.Label)
-			updatedAtLabel := row.Objects[6].(*widget.Label)
-			actionButtons := row.Objects[7].(*fyne.Container)
-			editButton := actionButtons.Objects[0].(*widget.Button)
-			deleteButton := actionButtons.Objects[1].(*widget.Button)
+			contentLabel := row.Objects[1].(*widget.Label)
+			createdAtLabel := row.Objects[2].(*widget.Label)
+			updatedAtLabel := row.Objects[3].(*widget.Label)
+
+			editButton := row.Objects[4].(*fyne.Container).Objects[0].(*widget.Button)
+			deleteButton := row.Objects[4].(*fyne.Container).Objects[1].(*widget.Button)
+			previewButton := row.Objects[4].(*fyne.Container).Objects[2].(*widget.Button)
 
 			titleLabel.SetText(todo.Title)
 			contentLabel.SetText(todo.Content)
@@ -145,6 +151,31 @@ func TodosView(window fyne.Window, userID primitive.ObjectID) fyne.CanvasObject 
 				showTodoForm(window, &todo, userID, updateTodoList)
 			}
 
+			content := widget.NewLabel("")
+			content.Wrapping = fyne.TextWrapWord
+			content.SetText(todo.Content)
+
+			// content preview of the todo details
+			card := widget.NewCard(
+				"",
+				"",
+				container.NewVBox(
+					widget.NewLabel("Title:"),
+					widget.NewLabel(todo.Title),
+					widget.NewLabel("Content:"),
+					content,
+					widget.NewLabel("CreatedAt:"),
+					widget.NewLabel(todo.CreatedAt.Format("2006-01-02 15:04:05")),
+					widget.NewLabel("UpdatedAt:"),
+					widget.NewLabel(todo.UpdatedAt.Format("2006-01-02 15:04:05")),
+				),
+			)
+
+			centeredCard := utils.NewFixedWidthCenter(card, 500)
+			previewButton.OnTapped = func() {
+				dialog.ShowCustom("Todo Details", "Close", container.NewCenter(centeredCard), window)
+			}
+			//delete todo button
 			deleteButton.OnTapped = func() {
 				dialog.ShowConfirm("Delete Todo", "Are you sure you want to delete this todo?",
 					func(ok bool) {
@@ -201,14 +232,24 @@ func TodosView(window fyne.Window, userID primitive.ObjectID) fyne.CanvasObject 
 				}
 				defer reader.Close()
 
+				// Check file extension before proceeding
+				if !strings.HasSuffix(reader.URI().Name(), ".csv") {
+					dialog.ShowError(errors.New("invalid file format, please upload a CSV file"), window)
+					return
+				}
+
 				todos, parseErr := parseCSV(reader.URI().Path(), userID)
 				if parseErr != nil {
 					dialog.ShowError(parseErr, window)
 					return
 				}
+				if len(todos) > 0 {
+					utils.BulkInsertTodos(todos, userID, window)
+					updateTodoList() // Refresh list after bulk upload
+				} else {
+					dialog.ShowInformation("No Todos Imported", "No valid todos were found in the CSV file.", window)
+				}
 
-				utils.BulkInsertTodos(todos, userID, window)
-				updateTodoList() // Refresh list after bulk upload
 			}, window)
 		openFileDialog.SetFilter(storage.NewExtensionFileFilter([]string{".csv"}))
 		openFileDialog.Show()
@@ -397,10 +438,11 @@ func showTodoForm(window fyne.Window, existing *models.Todo, UserID primitive.Ob
 
 	// Create a container for the form
 	formContainer := container.NewVBox(form)
-	formContainer.Resize(fyne.NewSize(400, 250))
+	centeredForm := utils.NewFixedWidthCenter(formContainer, 400)
+	formSave := container.NewCenter(centeredForm)
 
 	// Show the form dialog
-	dialog.ShowForm("Todo Form", "Save", "Cancel", form.Items, func(ok bool) {
+	dialog.ShowCustomConfirm("Todo Form", "Save", "Cancel", formSave, func(ok bool) {
 		if ok {
 			form.OnSubmit() // Call OnSubmit if "Save" is clicked
 		}
