@@ -105,21 +105,26 @@ func TodosView(window fyne.Window, userID primitive.ObjectID) fyne.CanvasObject 
 		func() fyne.CanvasObject {
 			// title label
 			titleLabel := widget.NewLabelWithStyle("", fyne.TextAlignLeading, fyne.TextStyle{})
+			titleLabel.Truncation = fyne.TextTruncation(fyne.TextTruncateEllipsis)
 
 			// content label
 			contentLabel := widget.NewLabelWithStyle("", fyne.TextAlignLeading, fyne.TextStyle{})
-			contentLabel.Wrapping = fyne.TextWrapWord
+			contentLabel.Truncation = fyne.TextTruncation(fyne.TextTruncateEllipsis)
+
+			// time
 			createdAtLabel := widget.NewLabelWithStyle("", fyne.TextAlignLeading, fyne.TextStyle{})
 			updatedAtLabel := widget.NewLabelWithStyle("", fyne.TextAlignLeading, fyne.TextStyle{})
+
 			editButton := widget.NewButton("Edit", nil)
 			deleteButton := widget.NewButton("Delete", nil)
+			previewButton := widget.NewButton("Preview", nil)
 
 			row := container.NewGridWithColumns(5,
 				titleLabel,
 				contentLabel,
 				createdAtLabel,
 				updatedAtLabel,
-				container.NewHBox(editButton, deleteButton),
+				container.NewHBox(editButton, deleteButton, previewButton),
 			)
 			return row
 		},
@@ -135,6 +140,7 @@ func TodosView(window fyne.Window, userID primitive.ObjectID) fyne.CanvasObject 
 
 			editButton := row.Objects[4].(*fyne.Container).Objects[0].(*widget.Button)
 			deleteButton := row.Objects[4].(*fyne.Container).Objects[1].(*widget.Button)
+			previewButton := row.Objects[4].(*fyne.Container).Objects[2].(*widget.Button)
 
 			titleLabel.SetText(todo.Title)
 			contentLabel.SetText(todo.Content)
@@ -145,6 +151,31 @@ func TodosView(window fyne.Window, userID primitive.ObjectID) fyne.CanvasObject 
 				showTodoForm(window, &todo, userID, updateTodoList)
 			}
 
+			content := widget.NewLabel("")
+			content.Wrapping = fyne.TextWrapWord
+			content.SetText(todo.Content)
+
+			// content preview of the todo details
+			card := widget.NewCard(
+				"",
+				"",
+				container.NewVBox(
+					widget.NewLabel("Title:"),
+					widget.NewLabel(todo.Title),
+					widget.NewLabel("Content:"),
+					content,
+					widget.NewLabel("CreatedAt:"),
+					widget.NewLabel(todo.CreatedAt.Format("2006-01-02 15:04:05")),
+					widget.NewLabel("UpdatedAt:"),
+					widget.NewLabel(todo.UpdatedAt.Format("2006-01-02 15:04:05")),
+				),
+			)
+
+			centeredCard := utils.NewFixedWidthCenter(card, 500)
+			previewButton.OnTapped = func() {
+				dialog.ShowCustom("Todo Details", "Close", container.NewCenter(centeredCard), window)
+			}
+			//delete todo button
 			deleteButton.OnTapped = func() {
 				dialog.ShowConfirm("Delete Todo", "Are you sure you want to delete this todo?",
 					func(ok bool) {
@@ -407,10 +438,11 @@ func showTodoForm(window fyne.Window, existing *models.Todo, UserID primitive.Ob
 
 	// Create a container for the form
 	formContainer := container.NewVBox(form)
-	formContainer.Resize(fyne.NewSize(400, 250))
+	centeredForm := utils.NewFixedWidthCenter(formContainer, 400)
+	formSave := container.NewCenter(centeredForm)
 
 	// Show the form dialog
-	dialog.ShowForm("Todo Form", "Save", "Cancel", form.Items, func(ok bool) {
+	dialog.ShowCustomConfirm("Todo Form", "Save", "Cancel", formSave, func(ok bool) {
 		if ok {
 			form.OnSubmit() // Call OnSubmit if "Save" is clicked
 		}
