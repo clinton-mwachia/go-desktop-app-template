@@ -16,27 +16,34 @@ func main() {
 	window := application.NewWindow("Go desktop app template")
 
 	// Placeholder for functions that need to reference each other
-	var showDashboard, showUsers, showTodos, showLogin func()
+	var showDashboard, showUsers, showTodos, showLogs, showLogin func()
 
 	// Function to show the dashboard view
 	showDashboard = func() {
-		sidebar := views.Sidebar(window, showDashboard, showUsers, showTodos, showLogin, utils.CurrentUserID)
+		sidebar := views.Sidebar(window, showDashboard, showUsers, showLogs, showTodos, showLogin, utils.CurrentUserID)
 		dashboard := views.DashboardView(window)
 		window.SetContent(container.NewBorder(nil, nil, sidebar, nil, dashboard))
 	}
 
 	// Function to show the users view
 	showUsers = func() {
-		sidebar := views.Sidebar(window, showDashboard, showUsers, showTodos, showLogin, utils.CurrentUserID)
+		sidebar := views.Sidebar(window, showDashboard, showUsers, showLogs, showTodos, showLogin, utils.CurrentUserID)
 		users := views.UsersView(window)
 		window.SetContent(container.NewBorder(nil, nil, sidebar, nil, users))
 	}
 
 	// Function to show the todos view
 	showTodos = func() {
-		sidebar := views.Sidebar(window, showDashboard, showUsers, showTodos, showLogin, utils.CurrentUserID)
+		sidebar := views.Sidebar(window, showDashboard, showUsers, showLogs, showTodos, showLogin, utils.CurrentUserID)
 		todos := views.TodosView(window, utils.CurrentUserID)
 		window.SetContent(container.NewBorder(nil, nil, sidebar, nil, todos))
+	}
+
+	// Function to show the users view
+	showLogs = func() {
+		sidebar := views.Sidebar(window, showDashboard, showUsers, showLogs, showTodos, showLogin, utils.CurrentUserID)
+		logs := views.LogsView(window)
+		window.SetContent(container.NewBorder(nil, nil, sidebar, nil, logs))
 	}
 
 	// Function to show the login view
