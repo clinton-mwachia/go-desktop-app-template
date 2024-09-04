@@ -54,25 +54,6 @@ func GetLogByID(id primitive.ObjectID, window fyne.Window) models.Log {
 	return log
 }
 
-// GetLogsByUserID retrieves all logs associated with a specific user.
-func GetLogsByUserID(userID primitive.ObjectID, window fyne.Window) []models.Log {
-	collection := GetCollection("logs")
-	var logs []models.Log
-
-	cursor, err := collection.Find(context.TODO(), bson.M{"user_id": userID})
-	if err != nil {
-		dialog.ShowError(err, window)
-		return logs
-	}
-	defer cursor.Close(context.TODO())
-
-	if err = cursor.All(context.TODO(), &logs); err != nil {
-		dialog.ShowError(err, window)
-	}
-
-	return logs
-}
-
 // DeleteLog deletes a log from the database.
 func DeleteLog(id primitive.ObjectID, window fyne.Window) {
 	collection := GetCollection("logs")
