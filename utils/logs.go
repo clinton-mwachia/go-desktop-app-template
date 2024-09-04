@@ -96,7 +96,7 @@ func DeleteAllLogs(window fyne.Window) {
 }
 
 // GetLogsPaginated fetches todos with pagination from the database
-func GetLogsPaginated(page, limit int, userID primitive.ObjectID, w fyne.Window) []models.Log {
+func GetLogsPaginated(page, limit int, w fyne.Window) []models.Log {
 	collection := GetCollection("logs")
 
 	skip := (page - 1) * limit
@@ -106,7 +106,7 @@ func GetLogsPaginated(page, limit int, userID primitive.ObjectID, w fyne.Window)
 
 	var logs []models.Log
 
-	cursor, err := collection.Find(context.TODO(), bson.M{"user_id": userID}, findOptions)
+	cursor, err := collection.Find(context.TODO(), bson.M{}, findOptions)
 	if err != nil {
 		dialog.ShowError(err, w)
 		return logs
@@ -152,4 +152,14 @@ func SearchLogs(searchText string, window fyne.Window) []models.Log {
 
 	return results
 
+}
+
+// CountLogs returns the total count of logs
+func CountLogs(w fyne.Window) int64 {
+	collection := GetCollection("logs")
+	count, err := collection.CountDocuments(context.TODO(), bson.M{})
+	if err != nil {
+		dialog.ShowError(err, w)
+	}
+	return count
 }
