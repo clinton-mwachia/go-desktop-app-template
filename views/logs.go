@@ -80,15 +80,12 @@ func LogsView(window fyne.Window) fyne.CanvasObject {
 
 	// Header Row with Titles
 	titleRow := container.NewHBox(
-		widget.NewLabelWithStyle("User", fyne.TextAlignLeading, fyne.TextStyle{Bold: true}),
-		layout.NewSpacer(),
-		widget.NewLabelWithStyle("TimeStamp", fyne.TextAlignLeading, fyne.TextStyle{Bold: true}),
+		widget.NewLabelWithStyle("Status", fyne.TextAlignLeading, fyne.TextStyle{Bold: true}),
 		layout.NewSpacer(),
 		widget.NewLabelWithStyle("Details", fyne.TextAlignLeading, fyne.TextStyle{Bold: true}),
 		layout.NewSpacer(),
-		widget.NewLabelWithStyle("CreatedAt", fyne.TextAlignLeading, fyne.TextStyle{Bold: true}),
+		widget.NewLabelWithStyle("TimeStamp", fyne.TextAlignLeading, fyne.TextStyle{Bold: true}),
 		layout.NewSpacer(),
-		widget.NewLabelWithStyle("UpdatedAt", fyne.TextAlignLeading, fyne.TextStyle{Bold: true}),
 	)
 
 	// Create the logs list
@@ -97,22 +94,20 @@ func LogsView(window fyne.Window) fyne.CanvasObject {
 			return len(logs)
 		},
 		func() fyne.CanvasObject {
-			// user label
+			// status
+			statusLabel := widget.NewLabelWithStyle("", fyne.TextAlignLeading, fyne.TextStyle{})
+
+			// detail label
 			detailLabel := widget.NewLabelWithStyle("", fyne.TextAlignLeading, fyne.TextStyle{})
 			detailLabel.Truncation = fyne.TextTruncation(fyne.TextTruncateEllipsis)
 
-			// content label
+			// time label
 			timeStampLabel := widget.NewLabelWithStyle("", fyne.TextAlignLeading, fyne.TextStyle{})
 
-			// time
-			createdAtLabel := widget.NewLabelWithStyle("", fyne.TextAlignLeading, fyne.TextStyle{})
-			updatedAtLabel := widget.NewLabelWithStyle("", fyne.TextAlignLeading, fyne.TextStyle{})
-
-			row := container.NewGridWithColumns(5,
+			row := container.NewGridWithColumns(3,
+				statusLabel,
 				detailLabel,
 				timeStampLabel,
-				createdAtLabel,
-				updatedAtLabel,
 			)
 			return row
 		},
@@ -121,16 +116,14 @@ func LogsView(window fyne.Window) fyne.CanvasObject {
 			row := obj.(*fyne.Container)
 
 			// Retrieve the components in the row
-			detailLabel := row.Objects[0].(*widget.Label)
-			timeStampLabel := row.Objects[1].(*widget.Label)
-			createdAtLabel := row.Objects[2].(*widget.Label)
-			updatedAtLabel := row.Objects[3].(*widget.Label)
+			statusLabel := row.Objects[0].(*widget.Label)
+			detailLabel := row.Objects[1].(*widget.Label)
+			timeStampLabel := row.Objects[2].(*widget.Label)
 
-			detailLabel.Wrapping = fyne.TextWrapWord
+			//detailLabel.Wrapping = fyne.TextWrapWord
+			statusLabel.SetText(log.Status)
 			detailLabel.SetText(log.Details)
-			timeStampLabel.SetText(log.Timestamp.Format("2006-01-02 15:04:05"))
-			createdAtLabel.SetText(log.CreatedAt.Format("2006-01-02 15:04:05")) // convert time to string
-			updatedAtLabel.SetText(log.UpdatedAt.Format("2006-01-02 15:04:05")) // convert time to string
+			timeStampLabel.SetText(log.Timestamp.Format("2006-01-02 15:04:05")) // convert time to string
 
 		},
 	)
@@ -193,17 +186,15 @@ func LogsView(window fyne.Window) fyne.CanvasObject {
 		defer writer.Flush()
 
 		// Write header
-		writer.Write([]string{"ID", "UserID", "Details", "Timestamp", "CreatedAt", "UpdatedAt"})
+		writer.Write([]string{"ID", "Status", "Details", "Timestamp"})
 
 		// Write todo data
 		for _, log := range logs {
 			writer.Write([]string{
 				log.ID.Hex(),
-				log.UserID.Hex(),
+				log.Status,
 				log.Details,
 				log.Timestamp.Format("2006-01-02 15:04:05"),
-				log.CreatedAt.Format("2006-01-02 15:04:05"),
-				log.UpdatedAt.Format("2006-01-02 15:04:05"),
 			})
 		}
 
