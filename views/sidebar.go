@@ -13,6 +13,9 @@ import (
 func Sidebar(window fyne.Window, showDashboard, showUsers, showLogs, showTodos, showLogin func(), userID primitive.ObjectID) *fyne.Container {
 	isAdmin := utils.IsAdmin(userID, window)
 
+	// fetch user by ID
+	user := utils.GetUserByID(userID, window)
+
 	dashboardButton := widget.NewButton("Dashboard", func() {
 		showDashboard()
 	})
@@ -41,6 +44,7 @@ func Sidebar(window fyne.Window, showDashboard, showUsers, showLogs, showTodos, 
 
 	logoutButton := widget.NewButton("Logout", func() {
 		showLogin()
+		utils.Logger(user.Username+" Logged out", "SUCCESS", window)
 	})
 
 	return container.NewVBox(
