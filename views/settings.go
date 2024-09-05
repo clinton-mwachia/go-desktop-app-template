@@ -48,11 +48,13 @@ func showSettings(window fyne.Window) {
 
 	refreshUserDetails()
 
+	// Variable to track current theme mode
+
 	content := container.NewHBox(
 		imageFile,
 		container.NewVBox(
 			userDetailsContainer,
-			container.NewGridWithColumns(2,
+			container.NewGridWithColumns(3,
 				widget.NewButton("Update Details", func() {
 					showUpdateUserDetailsDialog(window, user, refreshUserDetails)
 				}),
