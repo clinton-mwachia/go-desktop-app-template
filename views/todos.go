@@ -181,6 +181,10 @@ func TodosView(window fyne.Window, userID primitive.ObjectID) fyne.CanvasObject 
 					func(ok bool) {
 						if ok {
 							utils.DeleteTodo(todo.ID, window)
+							// fetch user by ID
+							var user = utils.GetUserByID(userID, window)
+							detail := user.Username + " Deleted " + todo.Title
+							utils.Logger(detail, "SUCCESS", window)
 							updateTodoList()
 
 						}
@@ -346,6 +350,10 @@ func TodosView(window fyne.Window, userID primitive.ObjectID) fyne.CanvasObject 
 
 // Function to display the todo form for adding or editing a todo
 func showTodoForm(window fyne.Window, existing *models.Todo, UserID primitive.ObjectID, onSubmit func()) {
+
+	// fetch user by ID
+	var user = utils.GetUserByID(UserID, window)
+
 	var todo models.Todo
 	isEdit := existing != nil
 	if isEdit {
@@ -399,6 +407,9 @@ func showTodoForm(window fyne.Window, existing *models.Todo, UserID primitive.Ob
 				utils.AddNotification(newNotification, window)
 				utils.PlayNotificationSound(window)
 
+				detail := user.Username + " Edited " + todo.Title
+				utils.Logger(detail, "SUCCESS", window)
+
 				// Update the notification count
 				updateNotificationCount(window)
 
@@ -423,6 +434,9 @@ func showTodoForm(window fyne.Window, existing *models.Todo, UserID primitive.Ob
 
 				utils.AddNotification(newNotification, window)
 				utils.PlayNotificationSound(window)
+
+				detail := user.Username + " Added " + todo.Title
+				utils.Logger(detail, "SUCCESS", window)
 
 				// Update the notification count
 				updateNotificationCount(window)
