@@ -17,8 +17,6 @@ func AddLog(log models.Log, window fyne.Window) {
 	_, err := collection.InsertOne(context.TODO(), log)
 	if err != nil {
 		dialog.ShowError(err, window)
-	} else {
-		dialog.ShowInformation("Success", "Log added", window)
 	}
 }
 
