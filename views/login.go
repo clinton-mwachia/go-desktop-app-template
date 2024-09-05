@@ -25,9 +25,12 @@ func LoginView(window fyne.Window, showDashboard func()) *fyne.Container {
 		user, err := auth.Login(username, password)
 		if err != nil {
 			log.Println("Failed to login:", err)
+			utils.Logger(username+" wrong password/username", "ERROR", window)
 			dialog.ShowError(err, window)
 		} else {
 			log.Println("User logged in:", user.Username)
+			detail := user.Username + " Logged in"
+			utils.Logger(detail, "SUCCESS", window)
 			utils.CurrentUserID = user.ID
 			dialog.ShowInformation("Login Successful", "Welcome, "+user.Username, window)
 			showDashboard()

@@ -8,9 +8,7 @@ import (
 
 type Log struct {
 	ID        primitive.ObjectID `bson:"_id,omitempty"`
-	UserID    primitive.ObjectID `bson:"user_id"`
-	Timestamp time.Time          `bson:"timestamp"`
+	Status    string             `bson:"status"`
 	Details   string             `bson:"details,omitempty"`
-	CreatedAt time.Time          `bson:"created_at"`
-	UpdatedAt time.Time          `bson:"updated_at"`
+	Timestamp time.Time          `bson:"timestamp"`
 }
