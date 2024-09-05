@@ -28,6 +28,8 @@ func createStatisticsBox(title, value string) fyne.CanvasObject {
 func DashboardView(window fyne.Window) *fyne.Container {
 	userID := utils.CurrentUserID
 
+	header := Header(window)
+
 	// Fetch statistics and data from the database
 	totalTodos, completedTodos, pendingTodos := utils.FetchTodoStatistics(userID, window)
 	doneData, dateData := utils.FetchTodoDataForCharts(userID, window)
@@ -62,5 +64,5 @@ func DashboardView(window fyne.Window) *fyne.Container {
 		widget.NewLabelWithStyle(avgTodosPerMonth, fyne.TextAlignCenter, fyne.TextStyle{Bold: true}),
 		widget.NewLabelWithStyle(completionRate, fyne.TextAlignCenter, fyne.TextStyle{Bold: true}))
 
-	return container.NewBorder(statsContainer, nil, nil, nil, container.NewVBox(summariesContainer, anotherContainer))
+	return container.NewBorder(header, nil, nil, nil, container.NewVBox(statsContainer, summariesContainer, anotherContainer))
 }
