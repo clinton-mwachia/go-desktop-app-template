@@ -48,7 +48,6 @@ func LoadSettings() (*AppSettings, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	return &settings, nil
 }
 
