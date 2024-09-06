@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"math"
 	"os"
 	"strconv"
@@ -22,11 +23,19 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-const (
-	pageSize = 15 // Number of todos per page
-)
-
 func TodosView(window fyne.Window, userID primitive.ObjectID) fyne.CanvasObject {
+	// Load the settings on app startup
+	settings, err := LoadSettings()
+	if err != nil {
+		log.Println("Error loading settings:", err)
+	}
+
+	pageSize, err := strconv.Atoi(settings.PageSize) // Number of todos per page
+
+	if err != nil {
+		dialog.ShowError(err, window)
+	}
+
 	var todoList *widget.List
 	var todos []models.Todo
 	var currentPage int = 1

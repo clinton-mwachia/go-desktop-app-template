@@ -22,7 +22,8 @@ import (
 
 // Struct to hold app settings
 type AppSettings struct {
-	IsDarkMode bool `json:"is_dark_mode"`
+	IsDarkMode bool   `json:"is_dark_mode"`
+	PageSize   string `json:"page_size"`
 }
 
 const settingsFilePath = "settings.json"
@@ -95,6 +96,17 @@ func toggleTheme() {
 	}
 }
 
+// FUNCTION TO TOGGLE THE PAGE SIZE
+func updatePageSize(pageSize string) {
+	// Save the current theme setting
+	settings := &AppSettings{IsDarkMode: isDarkMode, PageSize: pageSize}
+
+	err := SaveSettings(settings)
+	if err != nil {
+		log.Println("Error saving settings:", err)
+	}
+}
+
 // showSettings displays the settings view with user details and update options
 func showSettings(window fyne.Window) {
 	var user models.User
@@ -140,6 +152,13 @@ func showSettings(window fyne.Window) {
 				widget.NewButton("Change Password", func() {
 					showChangePasswordDialog(window, user)
 				}),
+			),
+			container.NewGridWithColumns(1,
+				container.NewVBox(
+					widget.NewLabel("No.Of Todos Per Page"),
+					widget.NewSelect([]string{"5", "10", "20", "30"}, func(value string) {
+						updatePageSize(value)
+					})),
 			),
 		),
 	)
