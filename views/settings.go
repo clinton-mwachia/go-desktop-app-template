@@ -33,7 +33,7 @@ func LoadSettings() (*AppSettings, error) {
 	// Check if the settings file exists
 	if _, err := os.Stat(settingsFilePath); os.IsNotExist(err) {
 		// If it doesn't exist, return default settings
-		return &AppSettings{IsDarkMode: false}, nil
+		return &AppSettings{IsDarkMode: false, PageSize: "10"}, nil
 	}
 
 	// Read the settings file
@@ -71,6 +71,7 @@ func SaveSettings(settings *AppSettings) error {
 
 // Variable to track current theme mode
 var isDarkMode bool = false
+var _pageSize string = "10"
 
 // Function to apply the theme based on the current mode
 func applyTheme() {
@@ -89,7 +90,7 @@ func toggleTheme() {
 	applyTheme()
 
 	// Save the current theme setting
-	settings := &AppSettings{IsDarkMode: isDarkMode}
+	settings := &AppSettings{PageSize: _pageSize, IsDarkMode: isDarkMode}
 	err := SaveSettings(settings)
 	if err != nil {
 		log.Println("Error saving settings:", err)
@@ -98,6 +99,7 @@ func toggleTheme() {
 
 // FUNCTION TO TOGGLE THE PAGE SIZE
 func updatePageSize(pageSize string) {
+	_pageSize = pageSize
 	// Save the current theme setting
 	settings := &AppSettings{IsDarkMode: isDarkMode, PageSize: pageSize}
 
@@ -105,6 +107,7 @@ func updatePageSize(pageSize string) {
 	if err != nil {
 		log.Println("Error saving settings:", err)
 	}
+
 }
 
 // showSettings displays the settings view with user details and update options
