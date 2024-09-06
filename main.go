@@ -24,9 +24,9 @@ func main() {
 	}
 
 	if settings.IsDarkMode {
-		fyne.CurrentApp().Settings().SetTheme(theme.DarkTheme())
+		application.Settings().SetTheme(theme.DarkTheme())
 	} else {
-		fyne.CurrentApp().Settings().SetTheme(theme.LightTheme())
+		application.Settings().SetTheme(theme.LightTheme())
 	}
 
 	// Placeholder for functions that need to reference each other
