@@ -18,32 +18,6 @@ var (
 	notifications          []models.Notification
 )
 
-// Struct to hold app settings
-type AppSettings struct {
-	IsDarkMode bool `json:"is_dark_mode"`
-}
-
-// Variable to track current theme mode
-var isDarkMode bool = false
-
-// Function to apply the theme based on the current mode
-func applyTheme() {
-	if isDarkMode {
-		fyne.CurrentApp().Settings().SetTheme(theme.DarkTheme())
-		darkModeIcon.SetIcon(theme.VisibilityIcon())
-	} else {
-		fyne.CurrentApp().Settings().SetTheme(theme.LightTheme())
-		darkModeIcon.SetIcon(theme.VisibilityOffIcon())
-	}
-}
-
-// Function to toggle between light and dark mode
-
-func toggleTheme() {
-	isDarkMode = !isDarkMode
-	applyTheme()
-}
-
 func Header(window fyne.Window) *fyne.Container {
 	// Notification icon button with initial count
 	notificationCountLabel = widget.NewLabel("0")
