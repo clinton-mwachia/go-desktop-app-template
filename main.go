@@ -17,6 +17,9 @@ func main() {
 	application := app.New()
 	window := application.NewWindow("Go desktop app template")
 
+	// Placeholder for functions that need to reference each other
+	var showDashboard, showUsers, showTodos, showLogs, showLogin func()
+
 	// Load the settings on app startup
 	settings, err := views.LoadSettings()
 	if err != nil {
@@ -28,9 +31,6 @@ func main() {
 	} else {
 		application.Settings().SetTheme(theme.LightTheme())
 	}
-
-	// Placeholder for functions that need to reference each other
-	var showDashboard, showUsers, showTodos, showLogs, showLogin func()
 
 	// Function to show the dashboard view
 	showDashboard = func() {

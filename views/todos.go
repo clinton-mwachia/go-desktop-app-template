@@ -23,6 +23,8 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
+var todoList *widget.List
+
 func TodosView(window fyne.Window, userID primitive.ObjectID) fyne.CanvasObject {
 	// Load the settings on app startup
 	settings, err := LoadSettings()
@@ -36,7 +38,6 @@ func TodosView(window fyne.Window, userID primitive.ObjectID) fyne.CanvasObject 
 		dialog.ShowError(err, window)
 	}
 
-	var todoList *widget.List
 	var todos []models.Todo
 	var currentPage int = 1
 	var totalTodos int64 = 0
