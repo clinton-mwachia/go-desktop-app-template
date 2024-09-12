@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 	"math"
 	"os"
 	"strconv"
@@ -29,7 +28,7 @@ func TodosView(window fyne.Window, userID primitive.ObjectID) fyne.CanvasObject 
 	// Load the settings on app startup
 	settings, err := LoadSettings()
 	if err != nil {
-		log.Println("Error loading settings:", err)
+		dialog.ShowInformation("User Settings", "Error loading settings", window)
 	}
 
 	pageSize, err := strconv.Atoi(settings.PageSize) // Number of todos per page
@@ -191,8 +190,20 @@ func TodosView(window fyne.Window, userID primitive.ObjectID) fyne.CanvasObject 
 					func(ok bool) {
 						if ok {
 							utils.DeleteTodo(todo.ID, window)
+
+							// Create a new notification
 							// fetch user by ID
 							var user = utils.GetUserByID(userID, window)
+							newNotification := models.Notification{
+								UserID:  user.ID,
+								Message: user.Username + " deleted " + todo.Title,
+								IsRead:  false,
+							}
+
+							utils.AddNotification(newNotification, window)
+
+							updateNotificationCount(window)
+
 							detail := user.Username + " Deleted " + todo.Title
 							utils.Logger(detail, "SUCCESS", window)
 							updateTodoList()

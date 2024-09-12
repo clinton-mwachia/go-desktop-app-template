@@ -3,7 +3,6 @@ package views
 import (
 	"desktop-app-template/auth"
 	"desktop-app-template/utils"
-	"log"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
@@ -22,13 +21,15 @@ func LoginView(window fyne.Window, showDashboard func()) *fyne.Container {
 		username := usernameEntry.Text
 		password := passwordEntry.Text
 
+		if username == "" || password == "" {
+			dialog.ShowInformation("User Register", "All fields are required", window)
+		}
+
 		user, err := auth.Login(username, password)
 		if err != nil {
-			log.Println("Failed to login:", err)
 			utils.Logger(username+" wrong password/username", "ERROR", window)
-			dialog.ShowError(err, window)
+			dialog.ShowInformation("User Login", "Wrong password/username ", window)
 		} else {
-			log.Println("User logged in:", user.Username)
 			detail := user.Username + " Logged in"
 			utils.Logger(detail, "SUCCESS", window)
 			utils.CurrentUserID = user.ID

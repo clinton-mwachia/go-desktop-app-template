@@ -3,19 +3,19 @@ package main
 import (
 	"desktop-app-template/utils"
 	"desktop-app-template/views"
-	"log"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/theme"
 )
 
 func main() {
-	utils.ConnectDB("mongodb://localhost:27017")
-
 	application := app.New()
 	window := application.NewWindow("Go desktop app template")
+	// connect to DB
+	utils.ConnectDB("mongodb://localhost:27017", window)
 
 	// Placeholder for functions that need to reference each other
 	var showDashboard, showUsers, showTodos, showLogs, showLogin func()
@@ -23,7 +23,7 @@ func main() {
 	// Load the settings on app startup
 	settings, err := views.LoadSettings()
 	if err != nil {
-		log.Println("Error loading settings:", err)
+		dialog.ShowInformation("Loading settings", "Error loading settings: "+err.Error(), window)
 	}
 
 	if settings.IsDarkMode {

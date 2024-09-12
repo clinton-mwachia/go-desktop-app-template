@@ -6,7 +6,6 @@ import (
 	"desktop-app-template/utils"
 	"encoding/json"
 	"errors"
-	"log"
 	"os"
 	"path/filepath"
 
@@ -84,7 +83,7 @@ func applyTheme() {
 }
 
 // Function to toggle between light and dark mode and save the settings
-func toggleTheme() {
+func toggleTheme(window fyne.Window) {
 	isDarkMode = !isDarkMode
 	applyTheme()
 
@@ -92,19 +91,19 @@ func toggleTheme() {
 	settings := &AppSettings{PageSize: _pageSize, IsDarkMode: isDarkMode}
 	err := SaveSettings(settings)
 	if err != nil {
-		log.Println("Error saving settings:", err)
+		dialog.ShowInformation("User Settings", "Error saving settings", window)
 	}
 }
 
 // FUNCTION TO TOGGLE THE PAGE SIZE
-func updatePageSize(pageSize string) {
+func updatePageSize(pageSize string, window fyne.Window) {
 	_pageSize = pageSize
 	// Save the current theme setting
 	settings := &AppSettings{IsDarkMode: isDarkMode, PageSize: pageSize}
 
 	err := SaveSettings(settings)
 	if err != nil {
-		log.Println("Error saving settings:", err)
+		dialog.ShowInformation("User Settings:Page size", "Error updating page size", window)
 	}
 
 }
@@ -159,7 +158,7 @@ func showSettings(window fyne.Window) {
 				container.NewVBox(
 					widget.NewLabel("No.Of Todos Per Page"),
 					widget.NewSelect([]string{"5", "10", "20", "30"}, func(value string) {
-						updatePageSize(value)
+						updatePageSize(value, window)
 					})),
 			),
 		),
