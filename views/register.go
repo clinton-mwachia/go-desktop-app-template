@@ -3,7 +3,6 @@ package views
 import (
 	"desktop-app-template/auth"
 	"desktop-app-template/utils"
-	"log"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
@@ -26,12 +25,14 @@ func RegisterView(window fyne.Window, showDashboard func()) *fyne.Container {
 		password := passwordEntry.Text
 		role := roleEntry.Text
 
+		if username == "" || password == "" || role == "" {
+			dialog.ShowInformation("User Register", "All fields are required", window)
+		}
+
 		err := auth.Register(username, password, role)
 		if err != nil {
-			log.Println("Failed to register:", err)
-			dialog.ShowError(err, window)
+			dialog.ShowInformation("User Register", "Cannot Register account", window)
 		} else {
-			log.Println("User registered:", username)
 			dialog.ShowInformation("Registration Successful", "Please login, "+username, window)
 			window.SetContent(LoginView(window, showDashboard))
 		}

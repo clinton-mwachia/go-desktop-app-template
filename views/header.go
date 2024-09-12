@@ -76,7 +76,7 @@ func Header(window fyne.Window) *fyne.Container {
 
 	// dark mode icon
 	darkModeIcon = widget.NewButtonWithIcon("", themeIcon, func() {
-		toggleTheme()
+		toggleTheme(window)
 	})
 
 	// Set initial count
