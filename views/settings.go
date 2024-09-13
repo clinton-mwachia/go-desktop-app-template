@@ -74,10 +74,10 @@ var _pageSize string = "10"
 // Function to apply the theme based on the current mode
 func applyTheme() {
 	if isDarkMode {
-		fyne.CurrentApp().Settings().SetTheme(theme.DarkTheme())
+		fyne.CurrentApp().Settings().SetTheme(&themeVariant{Theme: theme.DefaultTheme(), variant: theme.VariantDark})
 		darkModeIcon.SetIcon(theme.VisibilityIcon())
 	} else {
-		fyne.CurrentApp().Settings().SetTheme(theme.LightTheme())
+		fyne.CurrentApp().Settings().SetTheme(&themeVariant{Theme: theme.DefaultTheme(), variant: theme.VariantLight})
 		darkModeIcon.SetIcon(theme.VisibilityOffIcon())
 	}
 }
