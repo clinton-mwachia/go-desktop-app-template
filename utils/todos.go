@@ -8,6 +8,7 @@ import (
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/dialog"
+	"fyne.io/fyne/v2/widget"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -77,13 +78,14 @@ func GetTodosByUserID(userID primitive.ObjectID, window fyne.Window) []models.To
 }
 
 // BulkInsertTodos inserts multiple todos into the database.
-func BulkInsertTodos(todos []models.Todo, userID primitive.ObjectID, window fyne.Window) {
+func BulkInsertTodos(todos []models.Todo, userID primitive.ObjectID, window fyne.Window, progressBar *widget.ProgressBar) {
 	collection := GetCollection("todos")
 	var docs []interface{}
+	totalTodos := len(todos)
+	progress := 0
 
-	for _, todo := range todos {
+	for i, todo := range todos {
 		parsedTime, err := time.Parse("2006-01-02 15:04:05", time.Now().Format("2006-01-02 15:04:05"))
-
 		if err != nil {
 			dialog.ShowError(err, window)
 			return
@@ -91,14 +93,23 @@ func BulkInsertTodos(todos []models.Todo, userID primitive.ObjectID, window fyne
 		todo.CreatedAt = parsedTime
 		todo.UserID = userID
 		docs = append(docs, todo)
+
+		// Update progress bar for each todo processed
+		progress = i + 1
+		progressBar.SetValue(float64(progress) / float64(totalTodos))
+
+		// Flush the documents in smaller batches
+		if len(docs) == 100 || i == totalTodos-1 {
+			_, err := collection.InsertMany(context.TODO(), docs)
+			if err != nil {
+				dialog.ShowError(err, window)
+				return
+			}
+			docs = nil // Reset docs slice for next batch
+		}
 	}
 
-	_, err := collection.InsertMany(context.TODO(), docs)
-	if err != nil {
-		dialog.ShowError(err, window)
-	} else {
-		dialog.ShowInformation("Success", "Todos added successfully!", window)
-	}
+	dialog.ShowInformation("Success", "Todos added successfully!", window)
 }
 
 // UpdateTodo updates an existing todo in the database.
