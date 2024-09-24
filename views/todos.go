@@ -268,9 +268,17 @@ func TodosView(window fyne.Window, userID primitive.ObjectID) fyne.CanvasObject 
 					dialog.ShowError(parseErr, window)
 					return
 				}
+
 				if len(todos) > 0 {
-					utils.BulkInsertTodos(todos, userID, window)
-					updateTodoList() // Refresh list after bulk upload
+					progressBar := widget.NewProgressBar()
+					progressDialog := dialog.NewCustom("Bulk Upload Progress", "Cancel", progressBar, window)
+					progressDialog.Show()
+
+					go func() {
+						utils.BulkInsertTodos(todos, userID, window, progressBar)
+						updateTodoList() // Refresh list after bulk upload
+						progressDialog.Hide()
+					}()
 				} else {
 					dialog.ShowInformation("No Todos Imported", "No valid todos were found in the CSV file.", window)
 				}
@@ -301,50 +309,80 @@ func TodosView(window fyne.Window, userID primitive.ObjectID) fyne.CanvasObject 
 	// Define functions for exporting data
 	exportToCSV := widget.NewButton("export to csv", func() {
 		todos := utils.GetTodosByUserID(userID, window)
-		file, err := os.Create("todos.csv")
-		if err != nil {
-			dialog.ShowError(err, window)
-			return
-		}
-		defer file.Close()
 
-		writer := csv.NewWriter(file)
-		defer writer.Flush()
+		// Create progress dialog
+		progress := widget.NewProgressBar()
+		progressDialog := dialog.NewCustom("Exporting Todos", "Cancel", progress, window)
+		progressDialog.Show()
 
-		// Write header
-		writer.Write([]string{"ID", "Title", "Content", "Done"})
+		go func() {
+			file, err := os.Create("todos.csv")
+			if err != nil {
+				dialog.ShowError(err, window)
+				return
+			}
+			defer file.Close()
 
-		// Write todo data
-		for _, todo := range todos {
-			writer.Write([]string{
-				todo.ID.Hex(),
-				todo.Title,
-				todo.Content,
-				boolToString(todo.Done), // convert bool to string
-			})
-		}
+			writer := csv.NewWriter(file)
+			defer writer.Flush()
 
-		dialog.ShowInformation("Export Successful", "Todos have been exported to todos.csv", window)
+			// Write header
+			writer.Write([]string{"ID", "Title", "Content", "Done"})
+
+			// Write todo data
+			for i, todo := range todos {
+				writer.Write([]string{
+					todo.ID.Hex(),
+					todo.Title,
+					todo.Content,
+					boolToString(todo.Done),
+				})
+
+				// Update progress
+				progress.SetValue(float64(i+1) / float64(len(todos)))
+			}
+
+			// Close progress dialog after exporting
+			progressDialog.Hide()
+			dialog.ShowInformation("Export Successful", "Todos have been exported to todos.csv", window)
+		}()
 	})
 
 	exportToJSON := widget.NewButton("export to json", func() {
-		todos := utils.GetTodosByUserID(userID, window) // Adjust as needed for paginated data
-		file, err := os.Create("todos.json")
-		if err != nil {
-			dialog.ShowError(err, window)
-			return
-		}
-		defer file.Close()
+		todos := utils.GetTodosByUserID(userID, window)
 
-		encoder := json.NewEncoder(file)
-		encoder.SetIndent("", "  ")
-		err = encoder.Encode(todos)
-		if err != nil {
-			dialog.ShowError(err, window)
-			return
-		}
+		// Create progress dialog
+		progress := widget.NewProgressBar()
+		progressDialog := dialog.NewCustom("Exporting Todos", "Cancel", progress, window)
+		progressDialog.Show()
 
-		dialog.ShowInformation("Export Successful", "Todos have been exported to todos.json", window)
+		go func() {
+			file, err := os.Create("todos.json")
+			if err != nil {
+				dialog.ShowError(err, window)
+				return
+			}
+			defer file.Close()
+
+			encoder := json.NewEncoder(file)
+			encoder.SetIndent("", "  ")
+
+			// Write todos data
+			for i, todo := range todos {
+				err := encoder.Encode(todo)
+				if err != nil {
+					dialog.ShowError(err, window)
+					return
+				}
+
+				// Update progress
+				progress.SetValue(float64(i+1) / float64(len(todos)))
+			}
+
+			// Close progress dialog after exporting
+			progressDialog.Hide()
+			dialog.ShowInformation("Export Successful", "Todos have been exported to todos.json", window)
+		}()
 	})
 
 	// the search entry and bulk upload button
